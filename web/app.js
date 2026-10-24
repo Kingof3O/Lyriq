@@ -822,19 +822,23 @@
         activeEl.classList.add('active');
         setupActiveSublines(activeEl, index);
         if (allowScroll !== false && Date.now() > AppState.userScrollUntil && !AppState.isMini) {
-          if (previous < 0) {
-            var cRect = el.lyricsViewport.getBoundingClientRect();
-            var lRect = activeEl.getBoundingClientRect();
-            var offset = lRect.top - cRect.top + el.lyricsViewport.scrollTop;
+          var cRect = el.lyricsViewport.getBoundingClientRect();
+          var lRect = activeEl.getBoundingClientRect();
+          var offset = lRect.top - cRect.top + el.lyricsViewport.scrollTop;
+          var targetScroll = Math.max(0, offset - (cRect.height * 0.44));
+          if (previous < 0 || prefersReducedMotion() || AppState.lowPower) {
             el.lyricsViewport.style.scrollBehavior = 'auto';
-            el.lyricsViewport.scrollTop = Math.max(0, offset - (cRect.height * 0.45));
+            el.lyricsViewport.scrollTop = targetScroll;
             el.lyricsViewport.style.scrollBehavior = '';
           } else {
-            activeEl.scrollIntoView({
-              behavior: prefersReducedMotion() || AppState.lowPower ? 'auto' : 'smooth',
-              block: 'center'
+            el.lyricsViewport.scrollTo({
+              top: targetScroll,
+              behavior: 'smooth'
             });
           }
+          if (window.scrollY !== 0) window.scrollTo(0, 0);
+          if (document.documentElement.scrollTop !== 0) document.documentElement.scrollTop = 0;
+          if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
         }
         updateSweep(index, currentPositionSeconds() + AppState.offset);
       }
@@ -3693,8 +3697,12 @@
     }
     if (AppState.activeIndex >= 0 && AppState.lyrics[AppState.activeIndex]) {
       var activeEl = $('line-' + AppState.activeIndex);
-      if (activeEl) {
-        activeEl.scrollIntoView({ behavior: 'auto', block: 'center' });
+      if (activeEl && el.lyricsViewport) {
+        var cRect = el.lyricsViewport.getBoundingClientRect();
+        var lRect = activeEl.getBoundingClientRect();
+        var offset = lRect.top - cRect.top + el.lyricsViewport.scrollTop;
+        el.lyricsViewport.scrollTop = Math.max(0, offset - (cRect.height * 0.44));
+        if (window.scrollY !== 0) window.scrollTo(0, 0);
       }
     }
   }

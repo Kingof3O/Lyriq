@@ -47,9 +47,6 @@ body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .dock-progress {
   background: #2A2A31;
 }
 
-body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .lyrics-scroll {
-  padding-bottom: 110px;
-}
 
 .dock-progress {
   display: flex;

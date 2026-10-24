@@ -16,6 +16,7 @@ html,
 body {
   height: 100%;
   width: 100%;
+  overflow: hidden !important;
 }
 
 body {
@@ -112,6 +113,7 @@ body.low-power .album-backdrop {
   height: 100vh;
   width: 100vw;
   min-height: 0;
+  overflow: hidden !important;
 }
 
 .app-shell::before {

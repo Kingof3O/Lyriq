@@ -103,9 +103,8 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scroll-behavior: smooth;
   scrollbar-gutter: stable;
-  padding: 14vh 24px 34vh;
+  padding: 38vh 24px 44vh;
 }
 
 .lyrics-scroll::-webkit-scrollbar,

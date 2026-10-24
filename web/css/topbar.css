@@ -104,8 +104,8 @@ body.is-playing .live-bars span:nth-child(3) { animation: bars 1.3s 0.3s ease-in
 .now-playing {
   position: absolute;
   left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  top: 12px;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 10px;

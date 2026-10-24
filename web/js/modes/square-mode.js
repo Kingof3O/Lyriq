@@ -57,8 +57,12 @@
     }
     if (AppState.activeIndex >= 0 && AppState.lyrics[AppState.activeIndex]) {
       var activeEl = $('line-' + AppState.activeIndex);
-      if (activeEl) {
-        activeEl.scrollIntoView({ behavior: 'auto', block: 'center' });
+      if (activeEl && el.lyricsViewport) {
+        var cRect = el.lyricsViewport.getBoundingClientRect();
+        var lRect = activeEl.getBoundingClientRect();
+        var offset = lRect.top - cRect.top + el.lyricsViewport.scrollTop;
+        el.lyricsViewport.scrollTop = Math.max(0, offset - (cRect.height * 0.44));
+        if (window.scrollY !== 0) window.scrollTo(0, 0);
       }
     }
   }
