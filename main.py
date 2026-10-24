@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import logging
 import math
 import time
 import threading
@@ -10,12 +11,16 @@ import urllib.parse
 import urllib.request
 import webview
 
+import app_paths
+import lyrics_providers
 from media_listener import MediaListener
 from lyrics_service import LyricsService
 from translator_service import TranslatorService
 from romanizer import Romanizer
 from discord_rpc import DiscordRPC
 from cache_service import get_cache
+
+logger = logging.getLogger("SpotifyLyrics")
 
 
 def _make_track_key(artist, title):
@@ -365,6 +370,116 @@ class AppAPI:
     def retry_lyrics(self):
         self._app.reload_current_lyrics()
 
+    # ------------------------------------------------------------------
+    # Lyrics provider / manual selection APIs
+    # ------------------------------------------------------------------
+    def search_lyrics(self, artist, title, duration=0):
+        """Returns scored lyric candidates for the current track."""
+        try:
+            return self._app.lyrics_service.search_lyrics(
+                artist or "", title or "", duration or 0
+            )
+        except Exception as exc:
+            logger.warning("Lyrics search failed: %s", exc)
+            return []
+
+    def select_lyrics(self, artist, title, duration, candidate):
+        """Fetches an explicitly chosen candidate for the lyrics pane.
+
+        The live playback identity is never changed here.  When the target
+        differs from the playing song the payload is marked as a preview.
+        """
+        if not isinstance(candidate, dict) or not candidate.get("provider"):
+            return False
+
+        artist = str(artist or "")
+        title = str(title or "")
+        if not title:
+            return False
+        try:
+            duration = float(duration or 0)
+        except (TypeError, ValueError):
+            duration = 0.0
+
+        app = self._app
+        with app.state_lock:
+            app.current_generation_id += 1
+            generation_id = app.current_generation_id
+            app.current_lyrics_key = _make_track_key(artist, title)
+            app.current_lyrics = None
+
+        threading.Thread(
+            target=app._fetch_and_translate_lyrics,
+            args=(artist, title, duration, generation_id, candidate),
+            daemon=True,
+        ).start()
+        return True
+
+    def save_local_lyrics(self, artist, title, lines):
+        """Saves lyrics as a local .lrc and reloads if it is the current song."""
+        result = lyrics_providers.save_local_lrc(artist, title, lines)
+        if not result.get("ok"):
+            return result
+
+        app = self._app
+        with app.state_lock:
+            live_artist = app.current_artist
+            live_title = app.current_title
+            live_duration = app.current_duration
+            matches_live = bool(title) and (
+                _make_track_key(artist, title)
+                == _make_track_key(live_artist, live_title)
+            )
+            generation_id = None
+            if matches_live:
+                app.current_generation_id += 1
+                generation_id = app.current_generation_id
+                app.current_lyrics_key = _make_track_key(artist, title)
+                app.current_lyrics = None
+
+        result["reloaded"] = matches_live
+        if matches_live:
+            local_candidate = {
+                "provider": "local",
+                "id": os.path.basename(result.get("path") or ""),
+                "title": title,
+                "artist": artist,
+            }
+            threading.Thread(
+                target=app._fetch_and_translate_lyrics,
+                args=(
+                    live_artist,
+                    live_title,
+                    live_duration,
+                    generation_id,
+                    local_candidate,
+                ),
+                daemon=True,
+            ).start()
+        return result
+
+    def get_lrc_folder(self):
+        """Returns the folder where local .lrc files are stored."""
+        return str(app_paths.get_lrc_dir())
+
+    def open_lrc_folder(self):
+        """Opens the local lyrics folder in the system file browser."""
+        try:
+            folder = str(app_paths.get_lrc_dir())
+            if hasattr(os, "startfile"):
+                os.startfile(folder)
+            else:
+                logger.warning("Opening folders is not supported on this platform")
+                return False
+            return True
+        except OSError as exc:
+            logger.warning("Could not open lrc folder: %s", exc)
+            return False
+
+    def get_lyrics_providers(self):
+        """Returns provider metadata for the lyrics search UI."""
+        return lyrics_providers.get_lyrics_providers()
+
 
 class SpotifyLyricsApp:
     def __init__(self):
@@ -645,12 +760,16 @@ class SpotifyLyricsApp:
             daemon=True
         ).start()
 
-    def _fetch_and_translate_lyrics(self, artist, title, duration, generation_id=None):
+    def _fetch_and_translate_lyrics(self, artist, title, duration, generation_id=None,
+                                    candidate=None):
         with self.state_lock:
             if generation_id is None:
                 generation_id = self.current_generation_id
             if self.current_lyrics_key is None:
                 self.current_lyrics_key = _make_track_key(artist, title)
+            preview = _make_track_key(artist, title) != _make_track_key(
+                self.current_artist, self.current_title
+            )
 
         def should_abort():
             return not self._is_current_fetch(generation_id, artist, title)
@@ -661,7 +780,8 @@ class SpotifyLyricsApp:
         try:
             # 1. Fetch Synced Lyrics
             lyrics_data = self.lyrics_service.fetch_lyrics(
-                artist, title, duration, should_abort=should_abort
+                artist, title, duration, should_abort=should_abort,
+                candidate=candidate
             )
             if should_abort():
                 return
@@ -670,12 +790,16 @@ class SpotifyLyricsApp:
                 return
 
             raw_lines = lyrics_data["lines"]
+            provider_name = lyrics_data.get("provider") or "lrclib"
 
             # 2. INSTANT DISPLAY
             initial_payload = {
                 "title": lyrics_data.get("title"),
                 "artist": lyrics_data.get("artist"),
-                "is_synced": lyrics_data.get("is_synced", True),
+                "provider": provider_name,
+                "id": lyrics_data.get("id"),
+                "preview": preview,
+                "is_synced": bool(lyrics_data.get("is_synced", False)),
                 "lang": "unknown",
                 "lines": raw_lines
             }
@@ -693,6 +817,7 @@ class SpotifyLyricsApp:
             # 4. Stream translations + romanizations into rendered lines
             trans_payload = {
                 "lang": dominant_lang,
+                "provider": provider_name,
                 "lines": translated_lines
             }
             if should_abort():
@@ -700,7 +825,7 @@ class SpotifyLyricsApp:
             self.evaluate_js(f"window.updateTranslations({json.dumps(trans_payload)})")
 
         except Exception as e:
-            print(f"Lyrics/Translation error: {e}")
+            logger.warning("Lyrics/Translation error: %s", e)
             if not should_abort():
                 self.evaluate_js("window.updateLyrics(null)")
 
