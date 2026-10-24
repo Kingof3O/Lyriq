@@ -3,6 +3,7 @@ __pycache__/
 build/
 dist/
 *.exe
+*.zip
 *.db
 *.db-wal
 *.db-shm

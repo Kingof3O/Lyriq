@@ -1,28 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-datas = [('web', 'web'), ('icon.ico', '.'), ('Lyriq_Brand_Assets', 'Lyriq_Brand_Assets')]
-binaries = []
-hiddenimports = [
-    'clr',
-    'pythonnet',
-    'webview.platforms.winforms',
-    # Only the winsdk namespaces used by media_listener; collecting the full
-    # generated package pulls in hundreds of unrelated namespaces.
-    'winsdk.windows.media.control',
-    'winsdk.windows.storage.streams',
-    'winsdk.windows.foundation',
-    'winsdk.windows.foundation.collections',
-    'winsdk.windows.storage',
-    'winsdk.windows.media',
-]
-
 
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=binaries,
-    datas=datas,
-    hiddenimports=hiddenimports,
+    binaries=[],
+    datas=[('web', 'web'), ('icon.ico', '.')],
+    hiddenimports=['clr', 'pythonnet', 'webview.platforms.winforms', 'pycaw', 'comtypes', 'winsdk.windows.media.control', 'winsdk.windows.storage.streams', 'winsdk.windows.foundation', 'winsdk.windows.foundation.collections', 'winsdk.windows.storage', 'winsdk.windows.media'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
