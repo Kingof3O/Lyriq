@@ -54,42 +54,44 @@
 
 .line-original {
   color: var(--text);
-  font-size: calc(21px * var(--font-scale));
-  font-weight: 700;
-  line-height: 1.32;
-  letter-spacing: -0.012em;
+  font-size: calc(23px * var(--font-scale));
+  font-weight: 570;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
   overflow-wrap: anywhere;
   user-select: text;
 }
 
 .lyric-line.active .line-original {
-  font-size: calc(32px * var(--font-scale));
-  font-weight: 750;
-  line-height: 1.22;
+  font-size: calc(38px * var(--font-scale));
+  font-weight: 690;
+  line-height: 1.12;
+  letter-spacing: -0.04em;
 }
 
 .line-romaji {
-  margin-top: 2px;
+  margin-top: 4px;
   color: var(--text-3);
   font-size: calc(13px * var(--font-scale));
-  font-style: italic;
-  font-weight: 550;
+  font-weight: 450;
   line-height: 1.35;
+  letter-spacing: 0.01em;
   user-select: text;
 }
 
 .line-translation {
-  margin-top: 3px;
+  margin-top: 5px;
   color: var(--text-2);
-  font-size: calc(17px * var(--font-scale));
-  font-weight: 550;
-  line-height: 1.38;
+  font-size: calc(19px * var(--font-scale));
+  font-weight: 520;
+  line-height: 1.32;
+  letter-spacing: -0.018em;
   user-select: text;
   transition: color 0.25s ease;
 }
 
 .lyric-line.active .line-translation {
-  color: var(--accent-text);
+  color: var(--brand-soft);
 }
 
 .line-romaji:empty,

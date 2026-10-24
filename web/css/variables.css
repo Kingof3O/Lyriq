@@ -1,86 +1,96 @@
 /* ==========================================================================
-   Design Tokens & Themes
+   Lyriq Design Tokens & Themes (from Lyriq_UIUX_Kit)
    ========================================================================== */
 
 :root {
-  --font-sans: 'Plus Jakarta Sans', 'Segoe UI Variable Display', 'Segoe UI', 'Malgun Gothic', 'Yu Gothic UI', 'Microsoft YaHei UI', sans-serif;
+  --font-sans: 'Segoe UI Variable', 'Segoe UI', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Yu Gothic UI', 'Microsoft YaHei UI', sans-serif;
   --font-scale: 1;
-  --radius-xs: 7px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --topbar-h: 56px;
-  --dock-h: 52px;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-island: 28px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --topbar-h: 58px;
+  --dock-h: 64px;
 
-  --bg: #0a0c11;
-  --bg-deep: #07090d;
-  --surface: rgba(14, 16, 22, 0.78);
-  --surface-solid: #11141b;
-  --surface-raised: rgba(23, 26, 34, 0.97);
-  --surface-hover: rgba(255, 255, 255, 0.055);
-  --surface-active: rgba(255, 255, 255, 0.1);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.15);
-  --text: #f4f6fa;
-  --text-2: rgba(244, 246, 250, 0.63);
-  --text-3: rgba(244, 246, 250, 0.4);
-  --text-inverse: #0b0e13;
-  --danger: #f87171;
-  --danger-soft: rgba(248, 113, 113, 0.13);
-  --success: #4ade80;
-  --warn: #fbbf24;
-  --scroll-thumb: rgba(255, 255, 255, 0.16);
-  --lyric-inactive-opacity: 0.42;
-  --backdrop-opacity: 0.25;
-  --shadow-1: 0 8px 24px rgba(0, 0, 0, 0.34);
-  --shadow-2: 0 20px 54px rgba(0, 0, 0, 0.52);
-  --tooltip-bg: #f4f6fa;
-  --tooltip-text: #0b0e13;
+  /* Obsidian dark palette */
+  --bg: #09090B;
+  --bg-deep: #060608;
+  --surface: rgba(17, 17, 22, 0.88);
+  --surface-solid: #111116;
+  --surface-raised: #16161D;
+  --surface-hover: rgba(255, 255, 255, 0.05);
+  --surface-active: rgba(255, 255, 255, 0.09);
+  --border: #25252D;
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text: #F7F7F8;
+  --text-2: #92929E;
+  --text-3: #666671;
+  --text-inverse: #09090B;
+  --danger: #FF5D70;
+  --danger-soft: rgba(255, 93, 112, 0.14);
+  --success: #6BD8A4;
+  --warn: #FBBF24;
+  --scroll-thumb: rgba(255, 255, 255, 0.14);
+  --lyric-inactive-opacity: 0.35;
+  --backdrop-opacity: 0.18;
+  --shadow-1: 0 8px 24px rgba(0, 0, 0, 0.38);
+  --shadow-2: 0 24px 64px rgba(0, 0, 0, 0.6);
+  --tooltip-bg: #16161D;
+  --tooltip-text: #F7F7F8;
 
-  --accent-color: #8ab4f8;
-  --accent-text: #a7c6ff;
-  --accent-contrast: #08111f;
-  --accent-soft: rgba(138, 180, 248, 0.13);
-  --accent-glow: rgba(138, 180, 248, 0.3);
+  /* Brand Electric Violet identity */
+  --brand: #8B5CF6;
+  --brand-soft: #A78BFA;
+  --live-accent: #7CA9FF;
+  --accent-color: #8B5CF6;
+  --accent-text: #A78BFA;
+  --accent-contrast: #09090B;
+  --accent-soft: rgba(139, 92, 246, 0.14);
+  --accent-glow: rgba(139, 92, 246, 0.45);
 }
 
 body[data-theme="light"] {
-  --bg: #eef1f6;
-  --bg-deep: #e5e9f0;
-  --surface: rgba(255, 255, 255, 0.8);
-  --surface-solid: #ffffff;
-  --surface-raised: rgba(255, 255, 255, 0.98);
-  --surface-hover: rgba(15, 23, 42, 0.05);
-  --surface-active: rgba(15, 23, 42, 0.09);
-  --border: rgba(15, 23, 42, 0.08);
-  --border-strong: rgba(15, 23, 42, 0.16);
-  --text: #11151d;
-  --text-2: rgba(17, 21, 29, 0.66);
-  --text-3: rgba(17, 21, 29, 0.44);
-  --text-inverse: #ffffff;
-  --danger: #dc2626;
-  --danger-soft: rgba(220, 38, 38, 0.09);
-  --warn: #b45309;
-  --scroll-thumb: rgba(15, 23, 42, 0.2);
-  --lyric-inactive-opacity: 0.42;
-  --backdrop-opacity: 0.14;
-  --shadow-1: 0 8px 24px rgba(15, 23, 42, 0.08);
-  --shadow-2: 0 20px 54px rgba(15, 23, 42, 0.16);
-  --tooltip-bg: #11151d;
-  --tooltip-text: #ffffff;
+  --bg: #F5F3EF;
+  --bg-deep: #EBE7E0;
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-solid: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-hover: rgba(23, 22, 27, 0.05);
+  --surface-active: rgba(23, 22, 27, 0.09);
+  --border: #DEDBE3;
+  --border-strong: rgba(23, 22, 27, 0.18);
+  --text: #17161B;
+  --text-2: #65646E;
+  --text-3: #95949F;
+  --text-inverse: #FFFFFF;
+  --danger: #E11D48;
+  --danger-soft: rgba(225, 29, 72, 0.09);
+  --warn: #D97706;
+  --scroll-thumb: rgba(23, 22, 27, 0.18);
+  --lyric-inactive-opacity: 0.38;
+  --backdrop-opacity: 0.10;
+  --shadow-1: 0 8px 24px rgba(23, 22, 27, 0.08);
+  --shadow-2: 0 20px 54px rgba(23, 22, 27, 0.16);
+  --tooltip-bg: #17161B;
+  --tooltip-text: #FFFFFF;
+  --accent-color: #7C3AED;
+  --accent-text: #6D28D9;
+  --accent-soft: rgba(124, 58, 237, 0.12);
+  --accent-glow: rgba(124, 58, 237, 0.35);
 }
 
 body[data-theme="oled"] {
   --bg: #000000;
   --bg-deep: #000000;
-  --surface: rgba(6, 7, 10, 0.88);
-  --surface-solid: #050608;
-  --surface-raised: rgba(11, 13, 18, 0.98);
+  --surface: rgba(9, 9, 12, 0.94);
+  --surface-solid: #09090C;
+  --surface-raised: #121217;
   --surface-hover: rgba(255, 255, 255, 0.06);
-  --surface-active: rgba(255, 255, 255, 0.11);
-  --border: rgba(255, 255, 255, 0.09);
+  --surface-active: rgba(255, 255, 255, 0.12);
+  --border: #1C1C24;
   --border-strong: rgba(255, 255, 255, 0.16);
-  --backdrop-opacity: 0.16;
+  --backdrop-opacity: 0.12;
 }

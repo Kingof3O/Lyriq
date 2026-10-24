@@ -142,7 +142,7 @@ body.mode-square .square-footer {
   bottom: 0;
   left: 0;
   width: 0%;
-  background: var(--accent);
+  background: linear-gradient(90deg, var(--brand), var(--live-accent));
   border-radius: 0 2px 2px 0;
   pointer-events: none;
 }

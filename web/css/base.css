@@ -113,3 +113,14 @@ body.low-power .album-backdrop {
   width: 100vw;
   min-height: 0;
 }
+
+.app-shell::before {
+  content: '';
+  position: absolute;
+  inset: -180px -80px auto auto;
+  width: 680px;
+  height: 680px;
+  background: radial-gradient(circle, rgba(124, 169, 255, 0.08), rgba(139, 92, 246, 0.04) 34%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}

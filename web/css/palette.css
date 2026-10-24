@@ -67,10 +67,26 @@
   text-align: left;
 }
 
-.palette-item:hover,
-.palette-item.is-active {
+.palette-item:hover {
   border-color: var(--border);
   background: var(--surface-hover);
+}
+
+.palette-item.is-active {
+  position: relative;
+  border-color: rgba(139, 92, 246, 0.3);
+  background: #19151F;
+}
+
+.palette-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2.5px;
+  border-radius: 2px;
+  background: var(--brand);
 }
 
 .palette-item .palette-icon {

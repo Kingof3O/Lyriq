@@ -1,0 +1,9 @@
+:root {
+  --lyriq-bg:#09090B; --lyriq-surface:#111116; --lyriq-raised:#16161D; --lyriq-hair:#25252D;
+  --lyriq-text:#F7F7F8; --lyriq-muted:#92929E; --lyriq-faint:#666671;
+  --lyriq-brand:#8B5CF6; --lyriq-brand-soft:#A78BFA; --lyriq-live:#7CA9FF;
+  --lyriq-success:#6BD8A4; --lyriq-danger:#FF5D70;
+  --lyriq-radius-sm:8px; --lyriq-radius-md:10px; --lyriq-radius-lg:14px; --lyriq-radius-xl:18px;
+  --lyriq-fast:120ms; --lyriq-standard:180ms; --lyriq-slow:260ms;
+  --lyriq-ease:cubic-bezier(.2,.8,.2,1);
+}

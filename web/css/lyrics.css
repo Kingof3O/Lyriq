@@ -171,13 +171,13 @@
 .lyric-line.active::before {
   content: '';
   position: absolute;
-  top: 13px;
-  bottom: 13px;
+  top: 10px;
+  bottom: 10px;
   left: 8px;
   width: 3px;
   border-radius: 3px;
-  background: var(--accent-color);
-  box-shadow: 0 0 14px var(--accent-glow);
-  transition: background-color 0.6s ease, box-shadow 0.6s ease;
+  background: linear-gradient(var(--brand-soft), var(--brand));
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.55);
+  transition: background-color 0.4s ease, box-shadow 0.4s ease;
 }
 

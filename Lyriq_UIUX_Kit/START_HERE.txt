@@ -1,0 +1,12 @@
+LYRIQ UI/UX HANDOFF — START HERE
+
+1) Open 00_Overview/Lyriq-screen-map.png for the full UI map.
+2) Treat PNGs in 01_Screens/ as the canonical visual direction.
+3) Read 04_Agent_Handoff/IMPLEMENTATION_SPEC.md.
+4) Read 02_Design_System/COMPONENT_SPEC.md and tokens.json.
+5) Read 04_Agent_Handoff/INTERACTION_SPEC.md.
+6) Use 04_Agent_Handoff/AGENT_PROMPT.md as the coding-agent prompt.
+7) Use 04_Agent_Handoff/ACCEPTANCE_CRITERIA.md before declaring the redesign complete.
+
+DO NOT implement the generic dashboard layout shown in the AI concept-board reference.
+The exact Reader architecture intentionally has no permanent sidebar.

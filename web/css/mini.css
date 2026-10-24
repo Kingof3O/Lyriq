@@ -87,7 +87,20 @@ body.resizing-mini * {
   justify-content: center;
   flex: 1 1 auto;
   min-width: 0;
+  padding-left: 12px;
   padding-bottom: 4px;
+}
+
+.mini-center::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(var(--brand-soft), var(--brand));
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.45);
 }
 
 .mini-line {
@@ -151,7 +164,7 @@ body.view-orig-only .mini-line {
   display: block;
   width: 0;
   height: 100%;
-  background: var(--accent-color);
+  background: linear-gradient(90deg, var(--brand), var(--live-accent));
 }
 
 .mini-actions {

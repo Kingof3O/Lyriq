@@ -120,3 +120,22 @@
   white-space: nowrap;
 }
 
+
+.search-result.is-active,
+.search-result[aria-selected="true"] {
+  position: relative;
+  border-color: rgba(139, 92, 246, 0.4);
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.12), transparent 80%);
+}
+
+.search-result.is-active::before,
+.search-result[aria-selected="true"]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--brand);
+}
