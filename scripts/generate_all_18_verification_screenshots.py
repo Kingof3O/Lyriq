@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Generates all 18 visual verification screenshots required by the Lyriq UI/UX redesign order.
 
-Uses headless Microsoft Edge to render and capture every required screen state at exact dimensions.
+Uses headless Microsoft Edge to render and capture every required screen state at exact dimensions,
+using genuine Taemin tracks and real high-res album thumbnails.
 """
 
 from __future__ import annotations
 
+import base64
 import http.server
 import json
 import os
@@ -20,23 +22,12 @@ WEB_DIR = ROOT / "web"
 AUDIT_DIR = ROOT / "docs" / "audit" / "v3" / "screenshots"
 EDGE_EXE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 
-SAMPLE_LINES = [
-    {"time": 0.0, "text": "맨날 이런 식", "translation": "It's always like this", "romaji": "maennal ireon sik"},
-    {"time": 3.5, "text": "너는 너, 나는 나, 너의 공식", "translation": "You are you, I am me, that's your formula", "romaji": "neoneun neo naneun na"},
-    {"time": 7.0, "text": "핸드폰은 장식", "translation": "Your phone is just an accessory", "romaji": "haendeuponeun jangsik"},
-    {"time": 10.5, "text": "진짜 남친 맞긴 하니? I'm sick", "translation": "Am I really your boyfriend? I'm sick", "romaji": "jinjja namchin matgin hani"},
-    {"time": 14.0, "text": "금보다 아껴 둔 내 맘은 어디로", "translation": "Where did my heart, kept more precious than gold, go?", "romaji": "geumboda akkyeo dun nae mameun eodiro"},
-    {"time": 17.5, "text": "밀고 당기기? 그딴 거 난 몰라", "translation": "Push and pull? I know nothing of such games", "romaji": "milgo danggigi? geuttan geo nan molla"},
-    {"time": 21.0, "text": "근데 왜 자꾸 날 찔러 봐", "translation": "So why do you keep poking at me?", "romaji": "geunde wae jakku nal jjilleo bwa"},
-    {"time": 24.5, "text": "헤어지잔 말은 뱉지 마 제발", "translation": "Please don't spit out the word 'break up'", "romaji": "heeojijan mareun baetji ma jebal"},
-    {"time": 28.0, "text": "넌 내가 필요할 때만 날 찾지", "translation": "You only look for me when you need me", "romaji": "neon naega piryohal ttaeman nal chatji"},
-    {"time": 31.5, "text": "우린 평행선, 같은 곳을 보지만", "translation": "We are parallel lines, looking at the same place", "romaji": "urin pyeonghaengseon, gateun goseul bojiman"},
-    {"time": 35.0, "text": "너무 다르지, 난 너밖에 없는데", "translation": "Yet so different; I only have you", "romaji": "neomu dareuji, nan neobakke eomneunde"},
-    {"time": 39.0, "text": "왜 너는 내가 없는 것처럼 굴어", "translation": "Why do you act as if I am not even there?", "romaji": "wae neoneun naega eomneun geotcheoreom gureo"},
-    {"time": 43.0, "text": "헷갈리게 하지 마", "translation": "Don't confuse me anymore", "romaji": "hetgallige haji ma"},
-    {"time": 46.5, "text": "장난해 너? 도대체 내가 뭐야", "translation": "Are you kidding? What on earth am I to you?", "romaji": "jangnanhae neo? dodaeche naega mwoya"},
-    {"time": 50.0, "text": "만만해 uh? 날 갖고 노는 거야", "translation": "Am I that easy? Are you playing with me?", "romaji": "manmanhae uh? nal gatgo noneun geoya"}
-]
+with open(Path(__file__).resolve().parent / "taemin_sample_lines.json", "r", encoding="utf-8") as f:
+    SAMPLE_LINES = json.load(f)
+
+with open(WEB_DIR / "assets" / "taemin-guilty.jpg", "rb") as f:
+    TAEMIN_THUMBNAIL = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode("utf-8")
+
 
 class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -69,6 +60,7 @@ class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
             (function() {{
               var scenario = "{scenario}";
               var sampleLines = {json.dumps(SAMPLE_LINES)};
+              var taeminThumb = {json.dumps(TAEMIN_THUMBNAIL)};
 
               window.pywebview = {{
                 api: {{
@@ -103,56 +95,64 @@ class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
 
               setTimeout(function() {{
                 if (scenario === 'waiting') {{
-                  if (window.showIdle) window.showIdle();
+                  window.updateTrack(null);
                   return;
                 }}
 
                 if (scenario === 'resolving') {{
                   window.updateTrack({{
-                    title: 'Danger',
-                    artist: 'BTS',
-                    album: 'Dark & Wild',
-                    duration: 245.0,
+                    title: 'Guilty',
+                    artist: 'TAEMIN',
+                    album: 'Guilty - The 4th Mini Album',
+                    thumbnail: taeminThumb,
+                    duration: 181.0,
                     status: 4,
                     position_ms: 0,
                     is_playing: true,
                     is_favorite: true
                   }});
-                  if (window.showSkeleton) window.showSkeleton();
                   return;
                 }}
 
                 if (scenario === 'offline') {{
                   window.updateTrack({{
-                    title: 'Danger',
-                    artist: 'BTS',
-                    album: 'Dark & Wild',
-                    duration: 245.0,
+                    title: 'Guilty',
+                    artist: 'TAEMIN',
+                    album: 'Guilty - The 4th Mini Album',
+                    thumbnail: taeminThumb,
+                    duration: 181.0,
                     status: 4,
                     position_ms: 0,
                     is_playing: true,
                     is_favorite: false
                   }});
-                  if (window.showError) {{
-                    window.showError('You are offline', 'Lyriq cannot reach online providers. Connect to network or load cached local .lrc file.', true);
-                  }}
+                  window.updateLyrics({{
+                    title: 'Guilty',
+                    artist: 'TAEMIN',
+                    is_synced: false,
+                    lang: '',
+                    provider: '',
+                    error: 'offline',
+                    lines: []
+                  }});
                   return;
                 }}
 
                 if (scenario === 'unsynced') {{
                   window.updateTrack({{
-                    title: 'Danger (Acoustic)',
-                    artist: 'BTS',
-                    album: 'Dark & Wild',
-                    duration: 245.0,
+                    title: 'Guilty (Unsynced)',
+                    artist: 'TAEMIN',
+                    album: 'Guilty - The 4th Mini Album',
+                    thumbnail: taeminThumb,
+                    duration: 181.0,
                     status: 4,
-                    position_ms: 35000,
+                    position_ms: 42600,
                     is_playing: true,
                     is_favorite: false
                   }});
                   window.updateLyrics({{
-                    title: 'Danger (Acoustic)',
-                    artist: 'BTS',
+                    title: 'Guilty (Unsynced)',
+                    artist: 'TAEMIN',
                     is_synced: false,
                     lang: 'ko',
                     provider: 'UNSYNCED',
@@ -163,18 +163,19 @@ class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
 
                 if (scenario === 'trans_unavail') {{
                   window.updateTrack({{
-                    title: 'Danger',
-                    artist: 'BTS',
-                    album: 'Dark & Wild',
-                    duration: 245.0,
+                    title: 'Guilty',
+                    artist: 'TAEMIN',
+                    album: 'Guilty - The 4th Mini Album',
+                    thumbnail: taeminThumb,
+                    duration: 181.0,
                     status: 4,
-                    position_ms: 35000,
+                    position_ms: 42600,
                     is_playing: true,
                     is_favorite: true
                   }});
                   window.updateLyrics({{
-                    title: 'Danger',
-                    artist: 'BTS',
+                    title: 'Guilty',
+                    artist: 'TAEMIN',
                     is_synced: true,
                     lang: 'ko',
                     provider: 'LRCLIB',
@@ -190,24 +191,25 @@ class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
                       }};
                     }})
                   }});
-                  window.updatePosition(35.0, true);
+                  window.updatePosition(42.6, true);
                   return;
                 }}
 
                 // Standard track playback for other scenarios
                 window.updateTrack({{
-                  title: 'Danger',
-                  artist: 'BTS',
-                  album: 'Dark & Wild',
-                  duration: 245.0,
+                  title: 'Guilty',
+                  artist: 'TAEMIN',
+                  album: 'Guilty - The 4th Mini Album',
+                  thumbnail: taeminThumb,
+                  duration: 181.0,
                   status: 4,
-                  position_ms: 35000,
+                  position_ms: 42600,
                   is_playing: true,
                   is_favorite: true
                 }});
                 window.updateLyrics({{
-                  title: 'Danger',
-                  artist: 'BTS',
+                  title: 'Guilty',
+                  artist: 'TAEMIN',
                   is_synced: true,
                   lang: 'ko',
                   provider: 'LRCLIB',
@@ -218,7 +220,7 @@ class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
                   provider: 'LRCLIB',
                   lines: sampleLines.map(function(l) {{ return {{ translation: l.translation, romaji: l.romaji }}; }})
                 }});
-                window.updatePosition(35.0, true);
+                window.updatePosition(42.6, true);
 
                 if (scenario === 'split') {{
                   document.body.classList.add('mode-fullscreen', 'layout-split');
@@ -227,9 +229,9 @@ class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
                   var mb = document.getElementById('miniBar');
                   if (mb) mb.hidden = false;
                   var orig = document.getElementById('miniOriginal');
-                  if (orig) orig.textContent = '너무 다르지, 난 너밖에 없는데';
+                  if (orig) orig.textContent = 'You got me G-U-I-L-T-Y';
                   var trans = document.getElementById('miniTranslation');
-                  if (trans) trans.textContent = 'Yet so different; I only have you';
+                  if (trans) trans.textContent = '모르게 너를 속여 전부를 뺏어 또 playing a game';
                   var fill = document.getElementById('miniProgressFill');
                   if (fill) fill.style.width = '65%';
                 }} else if (scenario === 'mini_expanded') {{
@@ -239,11 +241,11 @@ class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
                   var d = document.getElementById('miniDrawer');
                   if (d) d.hidden = false;
                   var orig = document.getElementById('miniOriginal');
-                  if (orig) orig.textContent = '너무 다르지, 난 너밖에 없는데';
+                  if (orig) orig.textContent = 'You got me G-U-I-L-T-Y';
                   var trans = document.getElementById('miniTranslation');
-                  if (trans) trans.textContent = 'Yet so different; I only have you';
+                  if (trans) trans.textContent = '모르게 너를 속여 전부를 뺏어 또 playing a game';
                 }} else if (scenario === 'square') {{
-                  document.body.classList.add('mode-square');
+                  document.body.classList.add('mode-square', 'square-art-bg');
                   var h = document.getElementById('squareHeader');
                   var f = document.getElementById('squareFooter');
                   if (h) h.hidden = false;
@@ -255,11 +257,11 @@ class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
                   if (sl) {{
                     sl.hidden = false;
                     document.body.classList.add('study-open');
-                    var sw = document.getElementById('studyWord'); if (sw) sw.textContent = '다르다';
-                    var sp = document.getElementById('studyPron'); if (sp) sp.textContent = 'dareuda • Adjective';
-                    var sd = document.getElementById('studyDef'); if (sd) sd.textContent = 'To be different, dissimilar, unlike';
-                    var sq = document.getElementById('studyQuote'); if (sq) sq.innerHTML = '너무 <span class="selected-word-highlight">다르지</span>, 난 너밖에 없는데';
-                    var sqt = document.getElementById('studyQuoteTrans'); if (sqt) sqt.textContent = 'Yet so different; I only have you';
+                    var sw = document.getElementById('studyWord'); if (sw) sw.textContent = '죄책감';
+                    var sp = document.getElementById('studyPron'); if (sp) sp.textContent = 'joechaekgam • Noun';
+                    var sd = document.getElementById('studyDef'); if (sd) sd.textContent = 'Guilt; guilty conscience; remorse for actions';
+                    var sq = document.getElementById('studyQuote'); if (sq) sq.innerHTML = '더 깊숙이 파고드는 <span class="selected-word-highlight">죄책감</span>';
+                    var sqt = document.getElementById('studyQuoteTrans'); if (sqt) sqt.textContent = 'Guilt digging in even deeper';
                   }}
                 }} else if (scenario === 'palette') {{
                   var cp = document.getElementById('commandPalette');
@@ -284,38 +286,46 @@ class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
                   if (sm) {{
                     sm.hidden = false;
                     var inp = document.getElementById('searchQueryInput');
-                    if (inp) inp.value = 'Danger BTS';
+                    if (inp) inp.value = 'Guilty TAEMIN';
                     var title = document.getElementById('searchCurrentTitle');
-                    if (title) title.textContent = 'Danger';
+                    if (title) title.textContent = 'Guilty';
                     var sub = document.getElementById('searchCurrentSub');
-                    if (sub) sub.textContent = 'BTS • Dark & Wild (2014) • 4:05';
+                    if (sub) sub.textContent = 'TAEMIN • Guilty - The 4th Mini Album (2023) • 3:01';
                     var count = document.getElementById('searchCandidateCount');
-                    if (count) count.textContent = '3 candidates';
+                    if (count) count.textContent = '4 candidates';
                     var results = document.getElementById('searchResults');
                     if (results) {{
                       results.innerHTML = `
                         <div class="search-row active">
                           <span class="tag provider-badge">LRCLIB</span>
-                          <div><strong>BTS - Danger</strong><div class="small">Dark & Wild (2014) • 4:05</div></div>
+                          <div><strong>TAEMIN - Guilty</strong><div class="small">Guilty - The 4th Mini Album • 3:01</div></div>
                           <span class="tag">Synced</span>
                           <span>Diff: 0.0s</span>
-                          <span class="small" style="color:var(--brand)">98% Match</span>
+                          <span class="small" style="color:var(--brand)">100% Match</span>
                           <span>✓</span>
                         </div>
                         <div class="search-row">
                           <span class="tag provider-badge">NETEASE</span>
-                          <div><strong>BTS - Danger (Acoustic Version)</strong><div class="small">Acoustic Edition • 4:07</div></div>
+                          <div><strong>TAEMIN - Criminal</strong><div class="small">Never Gonna Dance Again : Act 1 • 3:30</div></div>
                           <span class="tag">Synced</span>
-                          <span>Diff: +2.1s</span>
-                          <span class="small">84% Match</span>
+                          <span>Diff: +1.2s</span>
+                          <span class="small">98% Match</span>
                           <span></span>
                         </div>
                         <div class="search-row">
                           <span class="tag provider-badge">LRCLIB</span>
-                          <div><strong>BTS - Danger (Japanese Ver.)</strong><div class="small">Danger - Single • 4:05</div></div>
+                          <div><strong>TAEMIN - MOVE</strong><div class="small">MOVE - The 2nd Album • 3:31</div></div>
                           <span class="tag">Synced</span>
                           <span>Diff: 0.0s</span>
-                          <span class="small">72% Match</span>
+                          <span class="small">95% Match</span>
+                          <span></span>
+                        </div>
+                        <div class="search-row">
+                          <span class="tag provider-badge">LRCLIB</span>
+                          <div><strong>TAEMIN - Advice</strong><div class="small">Advice - The 3rd Mini Album • 3:12</div></div>
+                          <span class="tag">Synced</span>
+                          <span>Diff: 0.0s</span>
+                          <span class="small">92% Match</span>
                           <span></span>
                         </div>
                       `;
@@ -354,7 +364,6 @@ def generate_all():
     server_thread.start()
     print(f"Server started on http://127.0.0.1:{port}/")
 
-    # 18 Scenarios required by Section 28:
     scenarios = [
         ("01_reader_dark.png", "synced", 1120, 760),
         ("02_reader_small_480x663.png", "synced", 480, 663),

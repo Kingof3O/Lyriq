@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Headless UI smoke testing and screenshot generator for SpotifyLyrics v3.
+"""Headless UI smoke testing and screenshot generator for Lyriq v3.
 
 Uses Microsoft Edge headless to test the 2026 frontend redesign without requiring Spotify,
-captures reference screenshots, and verifies key accessibility, rendering, and interaction states.
+captures reference screenshots with genuine Taemin tracks and real high-res album thumbnails.
 """
 
 from __future__ import annotations
 
+import base64
 import http.server
 import json
 import os
@@ -21,30 +22,16 @@ WEB_DIR = ROOT / "web"
 AUDIT_DIR = ROOT / "docs" / "audit" / "v3"
 EDGE_EXE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 
-# 20 lyric lines with Korean Hangul, English translations, and Romanizations
-SAMPLE_LINES = [
-    {"time": 0.0, "text": "맨날 이런 식", "translation": "It's always like this", "romaji": "maennal ireon sik"},
-    {"time": 3.5, "text": "너는 너, 나는 나, 너의 공식", "translation": "You are you, I am me, that's your formula", "romaji": "neoneun neo naneun na neoui gong-sik"},
-    {"time": 7.0, "text": "핸드폰은 장식", "translation": "Your phone is just an accessory", "romaji": "haendeuponeun jangsik"},
-    {"time": 10.5, "text": "진짜 남친 맞긴 하니? I'm sick", "translation": "Am I really your boyfriend? I'm sick", "romaji": "jinjja namchin matgin hani? I'm sick"},
-    {"time": 14.0, "text": "금보다 아껴 둔 내 맘은 어디로", "translation": "Where did my heart, kept more precious than gold, go?", "romaji": "geumboda akkyeo dun nae mameun eodiro"},
-    {"time": 17.5, "text": "밀고 당기기? 그딴 거 난 몰라", "translation": "Push and pull? I know nothing of such games", "romaji": "milgo danggigi? geuttan geo nan molla"},
-    {"time": 21.0, "text": "근데 왜 자꾸 날 찔러 봐", "translation": "So why do you keep poking at me?", "romaji": "geunde wae jakku nal jjilleo bwa"},
-    {"time": 24.5, "text": "헤어지잔 말은 뱉지 마 제발", "translation": "Please don't spit out the word 'break up'", "romaji": "heeojijan mareun baetji ma jebal"},
-    {"time": 28.0, "text": "넌 내가 필요할 때만 날 찾지", "translation": "You only look for me when you need me", "romaji": "neon naega piryohal ttaeman nal chatji"},
-    {"time": 31.5, "text": "우린 평행선, 같은 곳을 보지만", "translation": "We are parallel lines, looking at the same place", "romaji": "urin pyeonghaengseon, gateun goseul bojiman"},
-    {"time": 35.0, "text": "너무 다르지, 난 너밖에 없는데", "translation": "Yet so different; I only have you", "romaji": "neomu dareuji, nan neobakke eomneunde"},
-    {"time": 39.0, "text": "왜 너는 내가 없는 것처럼 굴어", "translation": "Why do you act as if I am not even there?", "romaji": "wae neoneun naega eomneun geotcheoreom gureo"},
-    {"time": 43.0, "text": "헷갈리게 하지 마", "translation": "Don't confuse me anymore", "romaji": "hetgallige haji ma"},
-    {"time": 46.5, "text": "장난해 너? 도대체 내가 뭐야", "translation": "Are you kidding? What on earth am I to you?", "romaji": "jangnanhae neo? dodaeche naega mwoya"},
-    {"time": 50.0, "text": "만만해 uh? 날 갖고 노는 거야", "translation": "Am I that easy? Are you playing with me?", "romaji": "manmanhae uh? nal gatgo noneun geoya"},
-    {"time": 54.0, "text": "너 지금 위험해, 왜 나를 시험해", "translation": "You're in danger right now, why are you testing me?", "romaji": "neo jigeum wiheomhae, wae nareul siheomhae"},
-    {"time": 58.0, "text": "왜 나를 시험해, 헷갈리게 하지 마", "translation": "Why are you testing me, don't confuse me", "romaji": "wae nareul siheomhae, hetgallige haji ma"},
-    {"time": 62.0, "text": "장난해 너? 도대체 내가 뭐야", "translation": "Are you kidding? What on earth am I to you?", "romaji": "jangnanhae neo? dodaeche naega mwoya"},
-    {"time": 66.0, "text": "만만해 uh? 날 갖고 노는 거야", "translation": "Am I that easy? Are you playing with me?", "romaji": "manmanhae uh? nal gatgo noneun geoya"},
-    {"time": 70.0, "text": "너 지금 위험해, 왜 나를 시험해", "translation": "You're in danger right now, why are you testing me?", "romaji": "neo jigeum wiheomhae, wae nareul siheomhae"},
-    {"time": 74.0, "text": "Can't touch this, yeah you know it", "translation": "", "romaji": ""},
-]
+# Load Taemin Guilty lines
+with open(Path(__file__).resolve().parent / "taemin_sample_lines.json", "r", encoding="utf-8") as f:
+    SAMPLE_LINES = json.load(f)
+
+# Load real high-res album covers as base64
+with open(WEB_DIR / "assets" / "taemin-guilty.jpg", "rb") as f:
+    TAEMIN_THUMBNAIL = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode("utf-8")
+
+with open(WEB_DIR / "assets" / "amr-diab-tamally-maak.jpg", "rb") as f:
+    AMR_DIAB_THUMBNAIL = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode("utf-8")
 
 ARABIC_SAMPLE_LINES = [
     {"time": 0.0, "text": "تملي معاك، ولو حتى بعيد عني", "translation": "Always with you, even if you are far from me", "romaji": ""},
@@ -61,7 +48,6 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         url = self.path
         if url.startswith("/?") or url == "/" or url.startswith("/index.html"):
-            # Serve index.html with smoke injection script
             index_path = WEB_DIR / "index.html"
             content = index_path.read_text(encoding="utf-8")
             
@@ -74,6 +60,8 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
             (function() {{
               var sampleLines = {json.dumps(SAMPLE_LINES)};
               var arabicLines = {json.dumps(ARABIC_SAMPLE_LINES)};
+              var taeminThumb = {json.dumps(TAEMIN_THUMBNAIL)};
+              var arabicThumb = {json.dumps(AMR_DIAB_THUMBNAIL)};
               var scenario = "{scenario}";
 
               window.pywebview = {{
@@ -110,23 +98,33 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
                   open_lrc_folder: function() {{ return Promise.resolve(true); }},
                   search_lyrics: function() {{
                     return Promise.resolve([
-                      {{ provider: 'local', id: 'local:1', title: 'Danger', artist: 'BTS', album: 'Dark & Wild', duration: 245, has_synced: true, score: 100 }},
-                      {{ provider: 'lrclib', id: 'lrclib:123', title: 'Danger', artist: 'BTS', album: 'Dark & Wild', duration: 245, has_synced: true, score: 98 }},
-                      {{ provider: 'netease', id: 'netease:456', title: 'Danger (Japanese Ver.)', artist: 'BTS', album: 'Wake Up', duration: 246, has_synced: true, score: 85 }}
+                      {{ provider: 'local', id: 'local:1', title: 'Guilty', artist: 'TAEMIN', album: 'Guilty - The 4th Mini Album', duration: 181, has_synced: true, score: 100 }},
+                      {{ provider: 'lrclib', id: 'lrclib:123', title: 'Guilty', artist: 'TAEMIN', album: 'Guilty - The 4th Mini Album', duration: 181, has_synced: true, score: 99 }},
+                      {{ provider: 'netease', id: 'netease:456', title: 'Criminal', artist: 'TAEMIN', album: 'Never Gonna Dance Again : Act 1', duration: 210, has_synced: true, score: 85 }}
                     ]);
                   }},
                   select_lyrics: function() {{ return Promise.resolve(true); }},
                   save_local_lyrics: function() {{ return Promise.resolve({{ ok: true, path: "C:\\\\test.lrc" }}); }},
                   lookup_word: function(w) {{
-                    return Promise.resolve({{ word: w, trans: 'danger / risk', romaji: 'wiheom', lang: 'ko' }});
+                    return Promise.resolve({{
+                      word: w,
+                      definition: "guilt; guilty conscience; remorse",
+                      phonetic: "joechaekgam",
+                      lang: "Korean",
+                      pos: "noun",
+                      notes: "Theme of Taemin's 4th Mini Album"
+                    }});
                   }},
-                  toggle_favorite: function() {{ return Promise.resolve(true); }},
-                  get_song_history: function() {{ return Promise.resolve([]); }},
-                  get_vocab_words: function() {{ return Promise.resolve([]); }},
+                  get_favorites: function() {{ return Promise.resolve([]); }},
+                  get_history: function() {{ return Promise.resolve([]); }},
+                  get_vocab_notebook: function() {{ return Promise.resolve([]); }},
+                  set_mode: function() {{ return Promise.resolve(true); }},
+                  get_saved_bounds: function() {{ return Promise.resolve(null); }},
+                  save_window_bounds: function() {{ return Promise.resolve(true); }},
+                  drag_window: function() {{ return Promise.resolve(true); }},
                   toggle_pin: function() {{ return Promise.resolve(true); }},
                   toggle_fullscreen: function() {{ return Promise.resolve(true); }},
                   toggle_mini_mode: function() {{ return Promise.resolve(true); }},
-                  toggle_mini_expand: function() {{ return Promise.resolve(true); }},
                   set_mini_width: function(w) {{ return Promise.resolve(w); }},
                   get_mini_width: function() {{ return Promise.resolve(560); }},
                   toggle_square_mode: function() {{ return Promise.resolve(true); }},
@@ -154,18 +152,19 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
               setTimeout(function() {{
                 if (scenario === 'synced' || scenario === 'split' || scenario === 'mini' || scenario === 'square' || scenario === 'palette' || scenario === 'settings' || scenario === 'search' || scenario === 'trans_only') {{
                   window.updateTrack({{
-                    title: 'Danger',
-                    artist: 'BTS',
-                    album: 'Dark & Wild',
-                    duration: 245.0,
+                    title: 'Guilty',
+                    artist: 'TAEMIN',
+                    album: 'Guilty - The 4th Mini Album',
+                    thumbnail: taeminThumb,
+                    duration: 181.0,
                     status: 4,
-                    position_ms: 35000,
+                    position_ms: 42600,
                     is_playing: true,
                     is_favorite: true
                   }});
                   window.updateLyrics({{
-                    title: 'Danger',
-                    artist: 'BTS',
+                    title: 'Guilty',
+                    artist: 'TAEMIN',
                     is_synced: true,
                     lang: 'ko',
                     provider: 'LRCLIB',
@@ -176,14 +175,14 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
                     provider: 'LRCLIB',
                     lines: sampleLines.map(function(l) {{ return {{ translation: l.translation, romaji: l.romaji }}; }})
                   }});
-                  window.updatePosition(35.0, true);
+                  window.updatePosition(42.6, true);
 
                   if (scenario === 'split') {{
                     document.body.classList.add('mode-fullscreen', 'layout-split');
                   }} else if (scenario === 'mini') {{
                     document.body.classList.add('mode-mini');
                   }} else if (scenario === 'square') {{
-                    document.body.classList.add('mode-square');
+                    document.body.classList.add('mode-square', 'square-art-bg');
                   }} else if (scenario === 'trans_only') {{
                     document.body.classList.remove('view-both', 'view-orig-only');
                     document.body.classList.add('view-trans-only');
@@ -202,13 +201,47 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
                     if (window.openSettings) window.openSettings('lyrics');
                   }} else if (scenario === 'search') {{
                     var modal = document.getElementById('modalSearchLyrics');
-                    if (modal) modal.classList.add('open');
+                    if (modal) {{
+                      modal.classList.add('open');
+                      var inp = document.getElementById('inputSearchLyrics');
+                      if (inp) inp.value = 'Guilty TAEMIN';
+                      var res = document.getElementById('searchResults');
+                      if (res) {{
+                        res.innerHTML = `
+                          <div class="search-item is-selected">
+                            <span class="search-provider-badge">LRCLIB</span>
+                            <div class="search-meta">
+                              <span class="search-title">Guilty</span>
+                              <span class="search-artist">TAEMIN • Guilty - The 4th Mini Album • 3:01</span>
+                            </div>
+                            <span class="badge badge-accent">100% Match</span>
+                          </div>
+                          <div class="search-item">
+                            <span class="search-provider-badge">NETEASE</span>
+                            <div class="search-meta">
+                              <span class="search-title">Criminal</span>
+                              <span class="search-artist">TAEMIN • Never Gonna Dance Again : Act 1 • 3:30</span>
+                            </div>
+                            <span class="badge">98% Match</span>
+                          </div>
+                          <div class="search-item">
+                            <span class="search-provider-badge">LRCLIB</span>
+                            <div class="search-meta">
+                              <span class="search-title">MOVE</span>
+                              <span class="search-artist">TAEMIN • MOVE - The 2nd Album • 3:31</span>
+                            </div>
+                            <span class="badge">95% Match</span>
+                          </div>
+                        `;
+                      }}
+                    }}
                   }}
                 }} else if (scenario === 'arabic') {{
                   window.updateTrack({{
                     title: 'تملي معاك',
                     artist: 'عمرو دياب',
                     album: 'تملي معاك',
+                    thumbnail: arabicThumb,
                     duration: 269.0,
                     status: 4,
                     position_ms: 5000,
@@ -231,29 +264,36 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
                   window.updatePosition(5.0, true);
                 }} else if (scenario === 'unsynced') {{
                   window.updateTrack({{
-                    title: 'Danger (Acoustic)',
-                    artist: 'BTS',
-                    album: 'Dark & Wild',
-                    duration: 245.0,
+                    title: 'Guilty (Unsynced)',
+                    artist: 'TAEMIN',
+                    album: 'Guilty - The 4th Mini Album',
+                    thumbnail: taeminThumb,
+                    duration: 181.0,
                     status: 4,
-                    position_ms: 35000,
+                    position_ms: 42600,
                     is_playing: true,
                     is_favorite: false
                   }});
                   window.updateLyrics({{
-                    title: 'Danger (Acoustic)',
-                    artist: 'BTS',
+                    title: 'Guilty (Unsynced)',
+                    artist: 'TAEMIN',
                     is_synced: false,
                     lang: 'ko',
                     provider: 'UNSYNCED',
                     lines: sampleLines.map(function(l) {{ return {{ time: -1, text: l.text }}; }})
                   }});
+                  window.updateTranslations({{
+                    lang: 'ko',
+                    provider: 'UNSYNCED',
+                    lines: sampleLines.map(function(l) {{ return {{ translation: l.translation, romaji: l.romaji }}; }})
+                  }});
+                  window.updatePosition(42.6, true);
                 }}
-              }}, 100);
+              }}, 120);
             }})();
             </script>
             """
-            
+
             modified = content.replace("</body>", f"{harness}</body>")
             raw = modified.encode("utf-8")
             self.send_response(200)
