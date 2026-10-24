@@ -50,12 +50,16 @@
     AppState.provider = String(provider || '').toUpperCase();
     AppState.isSynced = synced !== false;
     var showProvider = !!AppState.provider && AppState.provider !== 'UNSYNCED';
-    el.providerBadge.hidden = !showProvider;
-    el.providerBadge.textContent = AppState.provider;
-    el.providerBadge.title = AppState.provider ? 'Lyrics provider: ' + AppState.provider : '';
-    el.stageProvider.hidden = !showProvider;
-    el.stageProvider.textContent = AppState.provider;
-    el.syncBadge.hidden = AppState.isSynced;
+    if (el.providerBadge) {
+      el.providerBadge.hidden = !showProvider;
+      el.providerBadge.textContent = AppState.provider;
+      el.providerBadge.title = AppState.provider ? 'Lyrics provider: ' + AppState.provider : '';
+    }
+    if (el.stageProvider) {
+      el.stageProvider.hidden = !showProvider;
+      el.stageProvider.textContent = AppState.provider;
+    }
+    if (el.syncBadge) el.syncBadge.hidden = AppState.isSynced;
     el.body.classList.toggle('lyrics-static', !AppState.isSynced);
     el.body.dataset.lyricsSynced = AppState.isSynced ? 'true' : 'false';
   }
@@ -141,6 +145,9 @@
   }
 
   function renderLyricsList() {
+    hideSkeleton();
+    el.idleState.hidden = true;
+    el.noLyricsState.hidden = true;
     var fragment = document.createDocumentFragment();
     var isTransOnly = AppState.lyricViewMode === 'trans-only';
     AppState.lyrics.forEach(function (line, index) {
