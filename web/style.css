@@ -1012,6 +1012,47 @@ body.view-trans-only .lyric-line.editing .line-original {
   margin-bottom: 5px;
 }
 
+/* In translation-only mode, lines that have no separate translation (e.g. already in English)
+   fall back to displaying the original lyric text styled like a primary translation line. */
+body.view-trans-only .lyric-line.no-trans .line-original {
+  display: block;
+  margin-top: 0;
+  color: var(--text);
+  font-size: calc(28px * var(--font-scale));
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+body.view-trans-only .lyric-line.no-trans.active .line-original {
+  font-size: calc(34px * var(--font-scale));
+  color: var(--text);
+}
+
+body.view-trans-only .lyric-line.no-trans .line-translation {
+  display: none;
+}
+
+/* Karaoke sweep for translation-only view */
+body.enable-sweep.view-trans-only .lyric-line.active .line-translation,
+body.enable-sweep.view-trans-only .lyric-line.no-trans.active .line-original {
+  background: linear-gradient(90deg,
+    var(--text) 0%,
+    var(--text) var(--line-progress, 0%),
+    var(--text-3) var(--line-progress, 0%),
+    var(--text-3) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+body.enable-sweep.view-trans-only .lyric-line.editing .line-translation,
+body.enable-sweep.view-trans-only .lyric-line.editing .line-original {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--text);
+}
+
 body.view-orig-only .line-translation {
   display: none;
 }
@@ -1689,6 +1730,31 @@ body.mode-mini .app-shell {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+body.view-trans-only .mini-line-item .mini-orig {
+  display: none;
+}
+
+body.view-trans-only .mini-line-item .mini-trans {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+body.view-trans-only .mini-line-item.no-trans .mini-orig {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+body.view-trans-only .mini-line-item.no-trans .mini-trans {
+  display: none;
+}
+
+body.view-orig-only .mini-line-item .mini-trans {
+  display: none;
 }
 
 body.mode-mini .toast-container {

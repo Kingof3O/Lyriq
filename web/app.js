@@ -1032,6 +1032,7 @@
       var lineEl = document.createElement('div');
       lineEl.className = 'lyric-line';
       if (line.time < 0) lineEl.classList.add('untimed');
+      if (!line.translation || !line.translation.trim()) lineEl.classList.add('no-trans');
       lineEl.id = 'line-' + index;
       lineEl.dataset.index = String(index);
       lineEl.dataset.time = String(line.time);
@@ -1074,6 +1075,21 @@
       el.miniBar.setAttribute('aria-label', 'Mini player');
       return;
     }
+    if (AppState.lyricViewMode === 'trans-only') {
+      var text = (line.translation && line.translation.trim()) || line.original || '—';
+      el.miniOriginal.textContent = text;
+      el.miniRomaji.textContent = '';
+      el.miniTranslation.textContent = '';
+      el.miniBar.setAttribute('aria-label', text);
+      return;
+    }
+    if (AppState.lyricViewMode === 'orig-only') {
+      el.miniOriginal.textContent = line.original || '—';
+      el.miniRomaji.textContent = line.romaji || '';
+      el.miniTranslation.textContent = '';
+      el.miniBar.setAttribute('aria-label', line.original || '');
+      return;
+    }
     el.miniOriginal.textContent = line.original || '—';
     el.miniRomaji.textContent = line.romaji || '';
     el.miniTranslation.textContent = line.translation || '';
@@ -1093,6 +1109,7 @@
     AppState.lyrics.forEach(function (line, index) {
       var item = document.createElement('div');
       item.className = 'mini-line-item';
+      if (!line.translation || !line.translation.trim()) item.classList.add('no-trans');
       item.id = 'mini-line-' + index;
       item.dataset.index = String(index);
       if (index === AppState.activeIndex) item.classList.add('active');
@@ -1304,14 +1321,19 @@
 
     data.lines.forEach(function (item, index) {
       if (index >= AppState.lyrics.length) return;
+      var tr = String(item.translation || '').trim();
       AppState.lyrics[index].translation = String(item.translation || '');
       AppState.lyrics[index].romaji = String(item.romaji || '');
+      var lineEl = $('line-' + index);
+      if (lineEl) lineEl.classList.toggle('no-trans', !tr);
       var transEl = $('trans-' + index);
       if (transEl) transEl.textContent = AppState.lyrics[index].translation;
       var romajiEl = $('romaji-' + index);
       if (romajiEl) romajiEl.textContent = AppState.lyrics[index].romaji;
       var miniTrans = $('mini-trans-' + index);
       if (miniTrans) miniTrans.textContent = AppState.lyrics[index].translation;
+      var miniItem = $('mini-line-' + index);
+      if (miniItem) miniItem.classList.toggle('no-trans', !tr);
     });
 
     showTranslationStatus(false);
@@ -2746,6 +2768,12 @@
       button.setAttribute('aria-pressed', String(button.dataset.lyricsMode === next));
       button.classList.toggle('is-active', button.dataset.lyricsMode === next);
     });
+    if (AppState.activeIndex >= 0) {
+      updateMiniLine(AppState.activeIndex);
+    } else if (!AppState.isSynced && AppState.lyrics.length) {
+      var first = AppState.lyrics.find(function (line) { return line.original; });
+      if (first) setMiniFromLine(first);
+    }
     if (opts.persist !== false) persistSettings({ lyrics_view_mode: next });
     if (opts.announce) {
       showToast('View: ' + (next === 'both' ? 'Dual' : next === 'trans-only' ? 'Translation only' : 'Original only'), { icon: 'captions' });

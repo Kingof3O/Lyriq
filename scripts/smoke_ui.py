@@ -43,6 +43,7 @@ SAMPLE_LINES = [
     {"time": 62.0, "text": "장난해 너? 도대체 내가 뭐야", "translation": "Are you kidding? What on earth am I to you?", "romaji": "jangnanhae neo? dodaeche naega mwoya"},
     {"time": 66.0, "text": "만만해 uh? 날 갖고 노는 거야", "translation": "Am I that easy? Are you playing with me?", "romaji": "manmanhae uh? nal gatgo noneun geoya"},
     {"time": 70.0, "text": "너 지금 위험해, 왜 나를 시험해", "translation": "You're in danger right now, why are you testing me?", "romaji": "neo jigeum wiheomhae, wae nareul siheomhae"},
+    {"time": 74.0, "text": "Can't touch this, yeah you know it", "translation": "", "romaji": ""},
 ]
 
 
@@ -138,7 +139,7 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
 
               // Feed scenario data after init
               setTimeout(function() {{
-                if (scenario === 'synced' || scenario === 'split' || scenario === 'mini' || scenario === 'palette' || scenario === 'settings' || scenario === 'search') {{
+                if (scenario === 'synced' || scenario === 'split' || scenario === 'mini' || scenario === 'palette' || scenario === 'settings' || scenario === 'search' || scenario === 'trans_only') {{
                   window.updateTrack({{
                     title: 'Danger',
                     artist: 'BTS',
@@ -168,6 +169,9 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
                     document.body.classList.add('mode-fullscreen', 'layout-split');
                   }} else if (scenario === 'mini') {{
                     document.body.classList.add('mode-mini');
+                  }} else if (scenario === 'trans_only') {{
+                    document.body.classList.remove('view-both', 'view-orig-only');
+                    document.body.classList.add('view-trans-only');
                   }} else if (scenario === 'palette') {{
                     var cp = document.getElementById('commandPalette');
                     if (cp) {{
@@ -237,6 +241,7 @@ def run_smoke():
         ("palette", 480, 720, AUDIT_DIR / "05_command_palette.png"),
         ("settings", 480, 720, AUDIT_DIR / "06_settings.png"),
         ("search", 480, 720, AUDIT_DIR / "07_manual_search.png"),
+        ("trans_only", 480, 720, AUDIT_DIR / "08_view_trans_only.png"),
     ]
 
     for name, w, h, out_path in scenarios:
