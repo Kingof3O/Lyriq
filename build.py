@@ -8,6 +8,18 @@ print("=== Compiling Optimized SpotifyLyrics Executable (v2.0) ===")
 base_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(base_dir)
 
+# winsdk is a large generated projection.  Collecting the entire package pulls
+# in hundreds of unused namespaces, so only the media session surface that
+# media_listener.py imports is bundled.
+WINSDK_HIDDEN_IMPORTS = [
+    "winsdk.windows.media.control",
+    "winsdk.windows.storage.streams",
+    "winsdk.windows.foundation",
+    "winsdk.windows.foundation.collections",
+    "winsdk.windows.storage",
+    "winsdk.windows.media",
+]
+
 cmd = [
     sys.executable,
     "-m", "PyInstaller",
@@ -18,13 +30,14 @@ cmd = [
     "--name", "SpotifyLyrics",
     "--icon", "icon.ico",
     "--add-data", "web;web",
-    "--collect-all", "winsdk",
+    "--add-data", "icon.ico;.",
     "--hidden-import", "clr",
     "--hidden-import", "pythonnet",
     "--hidden-import", "webview.platforms.winforms",
-    "--clean",
-    "main.py"
 ]
+for module in WINSDK_HIDDEN_IMPORTS:
+    cmd += ["--hidden-import", module]
+cmd += ["--clean", "main.py"]
 
 print("Executing PyInstaller command:", " ".join(cmd))
 res = subprocess.run(cmd)
@@ -44,3 +57,4 @@ if res.returncode == 0:
         print("Build finished but dist/SpotifyLyrics.exe was not found.")
 else:
     print(f"PyInstaller build failed with return code {res.returncode}")
+    sys.exit(res.returncode)

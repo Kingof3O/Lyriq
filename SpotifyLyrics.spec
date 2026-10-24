@@ -1,11 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_all
 
-datas = [('web', 'web')]
+datas = [('web', 'web'), ('icon.ico', '.')]
 binaries = []
-hiddenimports = ['clr', 'pythonnet', 'webview.platforms.winforms']
-tmp_ret = collect_all('winsdk')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+hiddenimports = [
+    'clr',
+    'pythonnet',
+    'webview.platforms.winforms',
+    # Only the winsdk namespaces used by media_listener; collecting the full
+    # generated package pulls in hundreds of unrelated namespaces.
+    'winsdk.windows.media.control',
+    'winsdk.windows.storage.streams',
+    'winsdk.windows.foundation',
+    'winsdk.windows.foundation.collections',
+    'winsdk.windows.storage',
+    'winsdk.windows.media',
+]
 
 
 a = Analysis(

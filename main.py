@@ -13,14 +13,23 @@ import webview
 
 import app_paths
 import lyrics_providers
+import startup
+import window_state
 from media_listener import MediaListener
 from lyrics_service import LyricsService
 from translator_service import TranslatorService
 from romanizer import Romanizer
 from discord_rpc import DiscordRPC
 from cache_service import get_cache
+from single_instance import SingleInstance
+from tray_icon import TrayIcon
 
 logger = logging.getLogger("SpotifyLyrics")
+
+APP_TITLE = "Spotify Lyrics & Translation"
+TRAY_TOOLTIP = "Spotify Lyrics"
+MINI_WIDTH = 560
+MINI_HEIGHT = 95
 
 
 def _make_track_key(artist, title):
@@ -102,6 +111,7 @@ class AppAPI:
         self._sleep_timer = None
 
     def toggle_pin(self, is_pinned):
+        self._app._persist_owned({"always_on_top": bool(is_pinned)})
         try:
             hwnd = self._app.get_hwnd()
             if hwnd:
@@ -121,26 +131,34 @@ class AppAPI:
             print("Toggle pin error:", e)
 
     def toggle_fullscreen(self):
-        if self._app.window:
-            self._app.window.toggle_fullscreen()
+        self._app.set_fullscreen_mode(not self._app.is_fullscreen)
 
     def toggle_mini_mode(self, is_mini):
-        if self._app.window:
-            if is_mini:
-                self._app.saved_width = self._app.window.width
-                self._app.saved_height = self._app.window.height
-                self._app.window.resize(560, 95)
-            else:
-                width = getattr(self._app, 'saved_width', 480)
-                height = getattr(self._app, 'saved_height', 720)
-                self._app.window.resize(width, height)
+        self._app.set_mini_mode(bool(is_mini))
 
     def toggle_mini_expand(self, is_expanded):
         if self._app.window:
             if is_expanded:
-                self._app.window.resize(560, 270)
+                self._app.window.resize(MINI_WIDTH, 270)
             else:
-                self._app.window.resize(560, 95)
+                self._app.window.resize(MINI_WIDTH, MINI_HEIGHT)
+
+    def set_close_to_tray(self, enabled):
+        """Enables or disables hiding the window instead of closing it."""
+        return self._app.set_close_to_tray(bool(enabled))
+
+    def set_start_with_windows(self, enabled):
+        """Adds or removes the per-user Run registry entry."""
+        return self._app.set_start_with_windows(bool(enabled))
+
+    def get_startup_state(self):
+        """Returns the live registry state for the startup toggle."""
+        try:
+            enabled = startup.is_start_with_windows()
+        except Exception as exc:
+            logger.warning("Could not read startup state: %s", exc)
+            enabled = False
+        return {"enabled": enabled, "supported": True}
 
     def toggle_ghost_mode(self, is_ghost):
         """Click-through mode for gaming: clicks pass through to the game beneath!"""
@@ -363,9 +381,17 @@ class AppAPI:
             self._app.window.minimize()
 
     def close(self):
-        self._app.stop()
-        if self._app.window:
-            self._app.window.destroy()
+        """Closes to the tray when enabled, otherwise shuts the app down."""
+        if self._app.close_to_tray:
+            self._app.hide_to_tray()
+            return True
+        self._app.request_quit()
+        return True
+
+    def quit(self):
+        """Fully exits the app; safe to call from the tray or JS."""
+        self._app.request_quit()
+        return True
 
     def retry_lyrics(self):
         self._app.reload_current_lyrics()
@@ -484,13 +510,44 @@ class AppAPI:
 
 
 class SpotifyLyricsApp:
-    def __init__(self):
+    def __init__(self, start_minimized=False):
         self.lyrics_service = LyricsService()
         self.translator_service = TranslatorService(target_lang="en")
         self.media_listener = None
         self.window = None
         self.hotkey_thread = None
         self.discord_rpc = DiscordRPC()
+
+        self.start_minimized = bool(start_minimized)
+        self.tray = None
+        self._tray_available = False
+        self.single_instance = None
+        self.close_to_tray = True
+
+        # Geometry is tracked separately from mini/fullscreen so the normal
+        # window shape survives those modes.
+        self._normal_geometry = {
+            "x": None,
+            "y": None,
+            "width": window_state.DEFAULT_WIDTH,
+            "height": window_state.DEFAULT_HEIGHT,
+        }
+        self._geometry_timer = None
+        self._geometry_lock = threading.Lock()
+        self._ignore_geometry_until = 0.0
+        self._is_mini = False
+        self._is_fullscreen = False
+        self._pending_mini = False
+        self._pending_fullscreen = False
+        self._force_show_on_loaded = False
+
+        self._quit_lock = threading.Lock()
+        self._quit_running = False
+        self._quit_requested = False
+        self._quit_done = False
+        self._quit_finished = threading.Event()
+        self._quitting = False
+        self.running = False
 
         self.current_track = None
         self.current_artist = ""
@@ -531,7 +588,7 @@ class SpotifyLyricsApp:
         except Exception:
             pass
         try:
-            hwnd = ctypes.windll.user32.FindWindowW(None, "Spotify Lyrics & Translation")
+            hwnd = ctypes.windll.user32.FindWindowW(None, APP_TITLE)
             if hwnd:
                 return hwnd
         except Exception:
@@ -556,28 +613,467 @@ class SpotifyLyricsApp:
 
         self.running = True
 
+        settings = {}
+        try:
+            settings = get_cache().get_settings()
+        except Exception as exc:
+            logger.warning("Could not load persisted window settings: %s", exc)
+        geometry = window_state.load_window_settings(settings)
+        self.close_to_tray = geometry["close_to_tray"]
+        self._normal_geometry = {
+            "x": geometry["x"],
+            "y": geometry["y"],
+            "width": geometry["width"],
+            "height": geometry["height"],
+        }
+
+        window_kwargs = {}
+        if geometry["x"] is not None and geometry["y"] is not None:
+            window_kwargs["x"] = geometry["x"]
+            window_kwargs["y"] = geometry["y"]
+        if self.start_minimized:
+            window_kwargs["hidden"] = True
+
         # Create pywebview window
         self.window = webview.create_window(
-            title="Spotify Lyrics & Translation",
+            title=APP_TITLE,
             url=html_path,
             js_api=self.api,
-            width=480,
-            height=720,
-            min_size=(360, 85),
+            width=geometry["width"],
+            height=geometry["height"],
+            min_size=(window_state.MIN_WIDTH, window_state.MIN_HEIGHT),
             frameless=True,
             easy_drag=True,
-            on_top=False,
-            transparent=False
+            on_top=geometry["always_on_top"],
+            transparent=False,
+            **window_kwargs,
         )
 
-        # Replay any media/lyrics payloads that were produced while the page
-        # was still loading.  The handler is idempotent.
-        try:
-            self.window.events.loaded += self._on_window_loaded
-        except Exception as exc:
-            logger.warning("Could not register window loaded handler: %s", exc)
+        self._wire_window_events()
+        self._start_tray(base_dir)
+
+        if self.start_minimized and not self._tray_available:
+            # Never leave the app invisible with no tray icon.
+            logger.warning("Tray unavailable; showing the window instead of starting hidden")
+            self._force_show_on_loaded = True
 
         webview.start(debug=False)
+
+    def _wire_window_events(self):
+        """Register replay, geometry and close-to-tray handlers."""
+        if not self.window:
+            return
+        handlers = (
+            ("loaded", self._on_window_loaded),
+            ("closing", self._on_window_closing),
+            ("moved", self._on_window_moved),
+            ("resized", self._on_window_resized),
+            ("shown", self._on_window_shown),
+        )
+        for event_name, handler in handlers:
+            try:
+                event = getattr(self.window.events, event_name)
+                event += handler
+            except Exception as exc:
+                logger.warning(
+                    "Could not register window %s handler: %s", event_name, exc
+                )
+
+    def _start_tray(self, base_dir):
+        icon_path = os.path.join(base_dir, "icon.ico")
+        try:
+            self.tray = TrayIcon(
+                self._on_tray_action,
+                icon_path=icon_path,
+                tooltip=TRAY_TOOLTIP,
+            )
+            self._tray_available = bool(self.tray.start())
+        except Exception:
+            logger.exception("Could not start the tray icon")
+            self.tray = None
+            self._tray_available = False
+
+        if not self._tray_available:
+            # Hiding without a tray icon would strand the app; fall back to a
+            # normal close until the tray can be created.
+            self.close_to_tray = False
+            if self.tray:
+                try:
+                    self.tray.stop()
+                except Exception:
+                    logger.exception("Could not stop the failed tray icon")
+                self.tray = None
+
+    def _on_tray_action(self, action):
+        try:
+            if action == "quit":
+                self.request_quit()
+            elif action == "show_hide":
+                self.toggle_show_hide()
+            elif action == "play_pause":
+                if self.media_listener:
+                    self.media_listener.toggle_play_pause()
+            elif action == "mini":
+                self._show_window()
+                self.evaluate_js(
+                    "window.toggleMiniModeHotKey && window.toggleMiniModeHotKey()"
+                )
+            elif action == "settings":
+                self._show_window()
+                self.evaluate_js(
+                    "window.openSettings && window.openSettings()"
+                )
+            else:
+                logger.warning("Unknown tray action: %s", action)
+        except Exception:
+            logger.exception("Tray action %r failed", action)
+
+    # ------------------------------------------------------------------
+    # Window modes / geometry / close-to-tray
+    # ------------------------------------------------------------------
+    @property
+    def is_fullscreen(self):
+        return self._is_fullscreen
+
+    @property
+    def is_mini(self):
+        return self._is_mini
+
+    def _window_is_shown(self):
+        try:
+            if not self.window:
+                return False
+            return bool(self.window.events.shown.is_set())
+        except Exception:
+            return False
+
+    def _on_window_shown(self, *args):
+        try:
+            if self._pending_mini and self._is_mini and self.window:
+                self._pending_mini = False
+                self.window.resize(MINI_WIDTH, MINI_HEIGHT)
+            if self._pending_fullscreen and self._is_fullscreen and self.window:
+                self._pending_fullscreen = False
+                self.window.toggle_fullscreen()
+        except Exception:
+            logger.exception("Could not apply the pending window mode")
+
+    def _capture_normal_geometry(self):
+        if self._is_mini or self._is_fullscreen:
+            return
+        geometry = self._geometry_snapshot()
+        width, height = window_state.clamp_size(
+            geometry.get("width"), geometry.get("height")
+        )
+        if width > 0 and height > 0:
+            geometry["width"] = width
+            geometry["height"] = height
+            with self._geometry_lock:
+                self._normal_geometry = geometry
+
+    def _geometry_snapshot(self):
+        with self._geometry_lock:
+            geometry = dict(self._normal_geometry)
+        if (
+            self.window
+            and not self._is_mini
+            and not self._is_fullscreen
+            and self._window_is_shown()
+        ):
+            try:
+                geometry.update(
+                    {
+                        "x": int(self.window.x),
+                        "y": int(self.window.y),
+                        "width": int(self.window.width),
+                        "height": int(self.window.height),
+                    }
+                )
+            except Exception as exc:
+                logger.debug("Could not read the live window geometry: %s", exc)
+        return geometry
+
+    def _ignore_geometry_for(self, seconds=0.8):
+        self._ignore_geometry_until = time.monotonic() + seconds
+
+    def _geometry_events_allowed(self):
+        return (
+            not self._quitting
+            and not self._is_mini
+            and not self._is_fullscreen
+            and time.monotonic() >= self._ignore_geometry_until
+        )
+
+    def _on_window_moved(self, *args):
+        if len(args) < 2 or not self._geometry_events_allowed():
+            return
+        try:
+            x, y = int(args[0]), int(args[1])
+        except (TypeError, ValueError):
+            return
+        with self._geometry_lock:
+            self._normal_geometry["x"] = x
+            self._normal_geometry["y"] = y
+        self._schedule_geometry_save()
+
+    def _on_window_resized(self, *args):
+        if len(args) < 2 or not self._geometry_events_allowed():
+            return
+        try:
+            width, height = int(args[0]), int(args[1])
+        except (TypeError, ValueError):
+            return
+        if width <= 0 or height <= 0:
+            return
+        with self._geometry_lock:
+            self._normal_geometry["width"] = width
+            self._normal_geometry["height"] = height
+        self._schedule_geometry_save()
+
+    def _schedule_geometry_save(self):
+        if self._quitting:
+            return
+        with self._geometry_lock:
+            if self._geometry_timer is not None:
+                self._geometry_timer.cancel()
+            timer = threading.Timer(1.0, self._flush_geometry)
+            timer.daemon = True
+            self._geometry_timer = timer
+            timer.start()
+
+    def _flush_geometry(self):
+        with self._geometry_lock:
+            self._geometry_timer = None
+        if not self._geometry_events_allowed():
+            return
+        self._save_window_state(include_view_mode=False)
+
+    def _cancel_geometry_timer(self):
+        with self._geometry_lock:
+            timer = self._geometry_timer
+            self._geometry_timer = None
+        if timer is not None:
+            timer.cancel()
+
+    def _current_view_mode(self):
+        if self._is_fullscreen:
+            return "fullscreen"
+        if self._is_mini:
+            return "mini"
+        return "card"
+
+    def _persist_owned(self, values):
+        try:
+            return window_state.persist_settings(values)
+        except Exception as exc:
+            logger.warning("Could not persist settings %r: %s", values, exc)
+            return False
+
+    def _save_window_state(self, include_view_mode=True):
+        geometry = self._geometry_snapshot()
+        width, height = window_state.clamp_size(
+            geometry.get("width"), geometry.get("height")
+        )
+        values = {"window_width": width, "window_height": height}
+        x = geometry.get("x")
+        y = geometry.get("y")
+        if x is not None and y is not None:
+            x, y = window_state.clamp_position(x, y, width, height)
+            values["window_x"] = x
+            values["window_y"] = y
+        with self._geometry_lock:
+            self._normal_geometry.update(
+                {"x": x, "y": y, "width": width, "height": height}
+            )
+        if include_view_mode:
+            values["view_mode"] = self._current_view_mode()
+            # Do not persist the in-memory fallback used when the tray failed.
+            if self._tray_available:
+                values["close_to_tray"] = self.close_to_tray
+        self._persist_owned(values)
+
+    def set_mini_mode(self, enabled):
+        enabled = bool(enabled)
+        if enabled == self._is_mini:
+            return
+        self._capture_normal_geometry()
+        if enabled and self._is_fullscreen:
+            self._is_fullscreen = False
+            self._pending_fullscreen = False
+            try:
+                if self.window and self._window_is_shown():
+                    self.window.toggle_fullscreen()
+            except Exception as exc:
+                logger.warning("Could not leave fullscreen for mini mode: %s", exc)
+
+        self._is_mini = enabled
+        self._ignore_geometry_for()
+        if enabled:
+            if self.window and self._window_is_shown():
+                try:
+                    self.window.resize(MINI_WIDTH, MINI_HEIGHT)
+                except Exception as exc:
+                    logger.warning("Could not resize into mini mode: %s", exc)
+            else:
+                self._pending_mini = True
+        else:
+            self._pending_mini = False
+            geometry = dict(self._normal_geometry)
+            if self.window and self._window_is_shown():
+                try:
+                    x, y = geometry.get("x"), geometry.get("y")
+                    if x is not None and y is not None:
+                        self.window.move(int(x), int(y))
+                    self.window.resize(
+                        int(geometry["width"]), int(geometry["height"])
+                    )
+                except Exception as exc:
+                    logger.warning("Could not restore the normal window size: %s", exc)
+
+        self._persist_owned(
+            {"view_mode": "mini" if enabled else "card"}
+        )
+
+    def set_fullscreen_mode(self, enabled):
+        enabled = bool(enabled)
+        if enabled == self._is_fullscreen:
+            return
+        if enabled and self._is_mini:
+            self.set_mini_mode(False)
+        if enabled:
+            self._capture_normal_geometry()
+        self._is_fullscreen = enabled
+        self._ignore_geometry_for()
+        if self.window and self._window_is_shown():
+            try:
+                self.window.toggle_fullscreen()
+            except Exception as exc:
+                logger.warning("Could not toggle fullscreen: %s", exc)
+        else:
+            self._pending_fullscreen = enabled
+
+        if enabled:
+            view_mode = "fullscreen"
+        elif self._is_mini:
+            view_mode = "mini"
+        else:
+            view_mode = "card"
+        self._persist_owned({"view_mode": view_mode})
+
+    def set_close_to_tray(self, enabled):
+        enabled = bool(enabled)
+        if enabled and not self._tray_available:
+            logger.warning("Cannot enable close-to-tray without a tray icon")
+            return False
+        self.close_to_tray = enabled
+        self._persist_owned({"close_to_tray": enabled})
+        return True
+
+    def set_start_with_windows(self, enabled):
+        enabled = bool(enabled)
+        try:
+            changed = startup.set_start_with_windows(enabled)
+        except Exception as exc:
+            logger.warning("Could not change start-with-Windows: %s", exc)
+            changed = False
+        if changed:
+            self._persist_owned({"start_with_windows": enabled})
+        return changed
+
+    def hide_to_tray(self):
+        if not self.window:
+            return False
+        self._cancel_geometry_timer()
+        self._save_window_state()
+        try:
+            self.window.hide()
+            return True
+        except Exception as exc:
+            logger.warning("Could not hide the window to the tray: %s", exc)
+            return False
+
+    def _on_window_closing(self, *args):
+        if self._quitting:
+            return True
+        try:
+            self._cancel_geometry_timer()
+            self._save_window_state()
+            if not self.close_to_tray or not self._tray_available:
+                return True
+            self.window.hide()
+            return False
+        except Exception:
+            logger.exception("Close-to-tray handler failed")
+            # Do not leave a window that cannot be closed.
+            return True
+
+    def _show_window(self):
+        try:
+            hwnd = self.get_hwnd()
+            if not hwnd:
+                return False
+            user32.ShowWindow(ctypes.c_void_p(hwnd), 9)  # SW_RESTORE
+            user32.SetForegroundWindow(ctypes.c_void_p(hwnd))
+            return True
+        except Exception as exc:
+            logger.warning("Could not show the window: %s", exc)
+            return False
+
+    # ------------------------------------------------------------------
+    # Shutdown
+    # ------------------------------------------------------------------
+    def request_quit(self):
+        with self._quit_lock:
+            if self._quit_done or self._quit_running or self._quit_requested:
+                return
+            self._quit_requested = True
+        threading.Thread(
+            target=self.quit, name="SpotifyLyricsQuit", daemon=True
+        ).start()
+
+    def quit(self):
+        """Stop listeners, save state, destroy the window and release the mutex."""
+        with self._quit_lock:
+            if self._quit_done:
+                return
+            if self._quit_running:
+                return
+            self._quit_running = True
+            self._quitting = True
+
+        try:
+            self._cancel_geometry_timer()
+            try:
+                self._save_window_state()
+            except Exception:
+                logger.exception("Could not save window state while quitting")
+            try:
+                self.stop()
+            except Exception:
+                logger.exception("Could not stop background services")
+            if self.window:
+                try:
+                    self.window.destroy()
+                except Exception as exc:
+                    logger.warning("Could not destroy the window: %s", exc)
+        finally:
+            if self.tray:
+                try:
+                    self.tray.stop()
+                except Exception:
+                    logger.exception("Could not stop the tray icon")
+                self.tray = None
+            with self._quit_lock:
+                self._quit_running = False
+                self._quit_done = True
+            self._quit_finished.set()
+            if self.single_instance:
+                self.single_instance.release()
+
+    def shutdown(self, timeout=10.0):
+        self.quit()
+        if not self._quit_finished.is_set():
+            self._quit_finished.wait(timeout)
 
     def on_global_hotkey(self, hotkey_id):
         """Handles Windows global keyboard shortcuts."""
@@ -759,6 +1255,14 @@ class SpotifyLyricsApp:
                 args=(artist, title, duration, generation_id),
                 daemon=True,
             ).start()
+
+        if getattr(self, "_force_show_on_loaded", False):
+            self._force_show_on_loaded = False
+            try:
+                if self.window:
+                    self.window.show()
+            except Exception as exc:
+                logger.warning("Could not show the window after load: %s", exc)
 
     def on_media_update(self, data):
         if not data:
@@ -1013,6 +1517,48 @@ class SpotifyLyricsApp:
         if self.discord_rpc:
             self.discord_rpc.close()
 
+def _configure_logging():
+    if logging.getLogger().handlers:
+        return
+    handlers = [logging.StreamHandler()]
+    try:
+        log_path = app_paths.get_logs_dir() / "app.log"
+        handlers.insert(
+            0, logging.FileHandler(log_path, encoding="utf-8")
+        )
+    except OSError as exc:
+        logger.warning("Could not open the log file: %s", exc)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        handlers=handlers,
+    )
+
+
+def main(argv=None):
+    _configure_logging()
+    args = list(sys.argv[1:] if argv is None else argv)
+    start_minimized = "--minimized" in args
+
+    instance = SingleInstance(window_title=APP_TITLE)
+    if not instance.acquire():
+        logger.info("SpotifyLyrics is already running; exiting")
+        return 0
+
+    app = SpotifyLyricsApp(start_minimized=start_minimized)
+    app.single_instance = instance
+    try:
+        app.start()
+    except Exception:
+        logger.exception("Fatal SpotifyLyrics startup error")
+        return 1
+    finally:
+        try:
+            app.shutdown()
+        finally:
+            instance.release()
+    return 0
+
+
 if __name__ == "__main__":
-    app = SpotifyLyricsApp()
-    app.start()
+    raise SystemExit(main())
