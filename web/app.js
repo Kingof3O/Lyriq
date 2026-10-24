@@ -137,6 +137,7 @@
     menuExportSheet: $('menuExportSheet'),
     menuOpenLrc: $('menuOpenLrc'),
     menuHistory: $('btnHistoryOpen'),
+    btnStudyLensOpen: $('btnStudyLensOpen'),
     menuVocab: $('btnVocabOpen'),
     stageArtwork: $('stageArtwork'),
     stageDisc: $('stageDisc'),
@@ -294,6 +295,7 @@
     paletteInput: $('paletteInput'),
     paletteList: $('paletteList'),
     lineContextMenu: $('lineContextMenu'),
+    ctxStudy: $('ctxStudy'),
     ctxCopy: $('ctxCopy'),
     ctxEdit: $('ctxEdit'),
     dictCard: $('dictCard'),
@@ -1939,6 +1941,21 @@
     return safeSource.slice(0, idx) + '<b class="selected-word-highlight">' + safeWord + '</b>' + safeSource.slice(idx + safeWord.length);
   }
 
+  function openActiveStudyLens() {
+    if (!el.studyLens) return;
+    if (!el.studyLens.hidden) {
+      closeStudyLens();
+      return;
+    }
+    var activeIdx = AppState.activeIndex >= 0 ? AppState.activeIndex : 0;
+    var line = AppState.lyrics[activeIdx];
+    if (line && line.original) {
+      triggerWordLookup(line.original, window.innerWidth / 2, 200, line.original, line.translation);
+    } else {
+      triggerWordLookup('Guilty', window.innerWidth / 2, 200, 'Guilty', 'Study Lens Inspector');
+    }
+  }
+
   function closeStudyLens() {
     if (el.studyLens) el.studyLens.hidden = true;
     document.body.classList.remove('study-open');
@@ -2037,6 +2054,58 @@
     utterance.lang = map[lang] || 'en-US';
     utterance.rate = 0.85;
     window.speechSynthesis.speak(utterance);
+  }
+
+  function wireStudyActions() {
+    if (el.btnStudyLensClose) el.btnStudyLensClose.addEventListener('click', closeStudyLens);
+    if (el.btnStudyCopy) {
+      el.btnStudyCopy.addEventListener('click', function () {
+        var text = dictState.word + (dictState.romaji ? ' (' + dictState.romaji + ')' : '') + ': ' + dictState.meaning;
+        copyText(text).then(function () { showToast('Word copied to clipboard', { icon: 'copy' }); });
+      });
+    }
+    if (el.btnStudySave) {
+      el.btnStudySave.addEventListener('click', function () {
+        if (!dictState.word) return;
+        if (!hasApi('save_vocab_word')) {
+          showToast('Vocabulary is unavailable in this build.', { icon: 'alert', tone: 'danger' });
+          return;
+        }
+        var song = AppState.track ? (AppState.track.title || '') : '';
+        callApi('save_vocab_word', dictState.word, dictState.romaji, dictState.meaning, dictState.language, song)
+          .then(function (ok) {
+            if (ok === false) {
+              showToast('Could not save this word.', { icon: 'alert', tone: 'danger' });
+              return;
+            }
+            if (el.btnStudySave) el.btnStudySave.textContent = '✓ Saved';
+            vocabLoaded = false;
+            showToast('Saved “' + dictState.word + '” to vocabulary', { icon: 'bookmark' });
+          });
+      });
+    }
+    if (el.btnDictClose) el.btnDictClose.addEventListener('click', function () { el.dictCard.hidden = true; });
+    if (el.btnDictSpeak) el.btnDictSpeak.addEventListener('click', function () { speakWord(dictState.word, dictState.language); });
+    if (el.btnDictCopy) {
+      el.btnDictCopy.addEventListener('click', function () {
+        var text = dictState.word + (dictState.romaji ? ' (' + dictState.romaji + ')' : '') + ': ' + dictState.meaning;
+        copyText(text).then(function () { showToast('Definition copied', { icon: 'copy' }); });
+      });
+    }
+    if (el.btnDictSave) {
+      el.btnDictSave.addEventListener('click', function () {
+        if (!dictState.word) return;
+        var song = AppState.track ? (AppState.track.title || '') : '';
+        callApi('save_vocab_word', dictState.word, dictState.romaji, dictState.meaning, dictState.language, song)
+          .then(function (ok) {
+            if (ok !== false) {
+              el.btnDictSave.classList.add('active');
+              vocabLoaded = false;
+              showToast('Saved to vocabulary', { icon: 'bookmark' });
+            }
+          });
+      });
+    }
   }
   // ---------------------------------------------------------------------------
   // Sleep timer
@@ -2817,6 +2886,14 @@
     contextLineIndex = -1;
   }
 
+  function studyContextLine() {
+    if (contextLineIndex < 0) { closeLineContext(); return; }
+    var line = AppState.lyrics[contextLineIndex];
+    closeLineContext();
+    if (!line) return;
+    triggerWordLookup(line.original, window.innerWidth / 2, 200, line.original, line.translation);
+  }
+
   function copyContextLine() {
     if (contextLineIndex < 0) return;
     copyText(lineText(AppState.lyrics[contextLineIndex])).then(function () {
@@ -2946,6 +3023,11 @@
     });
   }
 
+  function wireContextMenuActions() {
+    if (el.ctxStudy) el.ctxStudy.addEventListener('click', studyContextLine);
+    if (el.ctxCopy) el.ctxCopy.addEventListener('click', copyContextLine);
+    if (el.ctxEdit) el.ctxEdit.addEventListener('click', editContextLine);
+  }
   // ---------------------------------------------------------------------------
   // Command palette
   // ---------------------------------------------------------------------------
@@ -2983,7 +3065,8 @@
       { title: 'Liked songs', sub: 'View all songs you favorited', icon: 'heart-filled', run: function () { openHistory('liked'); } },
       { title: 'Spotify queue', sub: 'View upcoming playback queue', icon: 'list', run: openQueue },
       { title: 'Song history', sub: 'Preview songs you played', icon: 'history', run: function () { openHistory('all'); } },
-      { title: 'Vocabulary notebook', sub: 'Saved words and definitions', icon: 'book', run: function () { openVocab(''); } },
+      { title: 'Study Lens inspector', sub: 'Inspect vocabulary and definitions in active song', icon: 'book', run: openActiveStudyLens },
+      { title: 'Vocabulary notebook', sub: 'Saved words and definitions', icon: 'bookmark', run: function () { openVocab(''); } },
       { title: 'Toggle mini mode', sub: 'Ctrl+Shift+M', icon: 'pip', run: function () { setMiniMode(!AppState.isMini); } },
       { title: 'Mini mode: Cycle width', sub: '560px → 760px → 960px', icon: 'pip', run: function () { cycleMiniWidth(); } },
       { title: 'Toggle square mode', sub: 'Ctrl+Shift+S', icon: 'square', run: function () { setSquareMode(!AppState.isSquare); } },
@@ -4468,6 +4551,74 @@
       if (event.target === el.historyModal) closeHistory();
     });
     el.btnVocabClose.addEventListener('click', closeVocab);
+      wireStudyActions();
+    wireContextMenuActions();
+    if (el.btnStudyLensOpen) el.btnStudyLensOpen.addEventListener('click', function () { closeOverflow(); openActiveStudyLens(); });
+    if (el.btnExportVocab) {
+      el.btnExportVocab.addEventListener('click', function () {
+        callApi('export_vocab_csv').then(function (msg) {
+          showToast(msg || 'Exported vocabulary to Desktop', { icon: 'file-text' });
+        });
+      });
+    }
+
+    // Lyric viewport scroll & track interactions
+    el.lyricsViewport.addEventListener('wheel', function () {
+      AppState.userScrollUntil = Date.now() + 2600;
+    }, { passive: true });
+    el.lyricsViewport.addEventListener('touchmove', function () {
+      AppState.userScrollUntil = Date.now() + 2600;
+    }, { passive: true });
+    el.lyricsViewport.addEventListener('scroll', function () {
+      if (el.scrollRailThumb) {
+        var range = el.lyricsViewport.scrollHeight - el.lyricsViewport.clientHeight;
+        if (range > 0) {
+          var pct = (el.lyricsViewport.scrollTop / range) * 82;
+          el.scrollRailThumb.style.top = Math.min(82, Math.max(0, pct)) + '%';
+        }
+      }
+    }, { passive: true });
+
+    // Single click: seek to line timestamp in Spotify
+    el.lyricsList.addEventListener('click', function (event) {
+      if (editingState) return;
+      var lineEl = event.target.closest('.lyric-line');
+      if (!lineEl || event.target.isContentEditable) return;
+      var selection = window.getSelection();
+      if (selection && !selection.isCollapsed && selection.toString().trim()) return;
+      var index = Number(lineEl.dataset.index);
+      var line = AppState.lyrics[index];
+      if (line && line.time >= 0) seekTo(Math.max(0, line.time - AppState.offset), true);
+    });
+
+    // Right-click: context menu (Study, Copy, Edit)
+    el.lyricsList.addEventListener('contextmenu', function (event) {
+      if (editingState) return;
+      var lineEl = event.target.closest('.lyric-line');
+      if (!lineEl) return;
+      event.preventDefault();
+      openLineContext(Number(lineEl.dataset.index), event.clientX, event.clientY);
+    });
+
+    // Double-click: instant Study Lens inspection
+    el.lyricsList.addEventListener('dblclick', function (event) {
+      if (editingState) return;
+      var lineEl = event.target.closest('.lyric-line');
+      if (!lineEl) return;
+      event.stopPropagation();
+      var origText = lineEl.querySelector('.line-original') ? lineEl.querySelector('.line-original').textContent : '';
+      var transText = lineEl.querySelector('.line-translation') ? lineEl.querySelector('.line-translation').textContent : '';
+      var selection = window.getSelection();
+      var word = selection ? selection.toString().trim() : '';
+      if (!word) {
+        var origNode = lineEl.querySelector('.line-original');
+        word = (origNode ? origNode.textContent : '').trim();
+      }
+      if (word) {
+        triggerWordLookup(word, event.clientX, event.clientY, origText, transText);
+      }
+    });
+
   }
   // ---------------------------------------------------------------------------
   // Interaction wiring: scrubber bar
@@ -4591,10 +4742,16 @@
         else openPalette();
         return;
       }
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'e') {
+        event.preventDefault();
+        openActiveStudyLens();
+        return;
+      }
       if (event.key === 'Escape') {
         if (paletteState.open) { closePalette(); return; }
         if (!el.lineContextMenu.hidden) { closeLineContext(); return; }
         if (!el.overflowMenu.hidden) { closeOverflow(); return; }
+        if (el.studyLens && !el.studyLens.hidden) { closeStudyLens(); return; }
         if (el.dictCard.hidden === false) { el.dictCard.hidden = true; return; }
         if (!el.searchModal.hidden) { closeSearchModal(); return; }
         if (!el.historyModal.hidden) { closeHistory(); return; }

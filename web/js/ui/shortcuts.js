@@ -26,10 +26,16 @@
         else openPalette();
         return;
       }
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'e') {
+        event.preventDefault();
+        openActiveStudyLens();
+        return;
+      }
       if (event.key === 'Escape') {
         if (paletteState.open) { closePalette(); return; }
         if (!el.lineContextMenu.hidden) { closeLineContext(); return; }
         if (!el.overflowMenu.hidden) { closeOverflow(); return; }
+        if (el.studyLens && !el.studyLens.hidden) { closeStudyLens(); return; }
         if (el.dictCard.hidden === false) { el.dictCard.hidden = true; return; }
         if (!el.searchModal.hidden) { closeSearchModal(); return; }
         if (!el.historyModal.hidden) { closeHistory(); return; }

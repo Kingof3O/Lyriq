@@ -31,6 +31,21 @@
     return safeSource.slice(0, idx) + '<b class="selected-word-highlight">' + safeWord + '</b>' + safeSource.slice(idx + safeWord.length);
   }
 
+  function openActiveStudyLens() {
+    if (!el.studyLens) return;
+    if (!el.studyLens.hidden) {
+      closeStudyLens();
+      return;
+    }
+    var activeIdx = AppState.activeIndex >= 0 ? AppState.activeIndex : 0;
+    var line = AppState.lyrics[activeIdx];
+    if (line && line.original) {
+      triggerWordLookup(line.original, window.innerWidth / 2, 200, line.original, line.translation);
+    } else {
+      triggerWordLookup('Guilty', window.innerWidth / 2, 200, 'Guilty', 'Study Lens Inspector');
+    }
+  }
+
   function closeStudyLens() {
     if (el.studyLens) el.studyLens.hidden = true;
     document.body.classList.remove('study-open');
@@ -129,4 +144,56 @@
     utterance.lang = map[lang] || 'en-US';
     utterance.rate = 0.85;
     window.speechSynthesis.speak(utterance);
+  }
+
+  function wireStudyActions() {
+    if (el.btnStudyLensClose) el.btnStudyLensClose.addEventListener('click', closeStudyLens);
+    if (el.btnStudyCopy) {
+      el.btnStudyCopy.addEventListener('click', function () {
+        var text = dictState.word + (dictState.romaji ? ' (' + dictState.romaji + ')' : '') + ': ' + dictState.meaning;
+        copyText(text).then(function () { showToast('Word copied to clipboard', { icon: 'copy' }); });
+      });
+    }
+    if (el.btnStudySave) {
+      el.btnStudySave.addEventListener('click', function () {
+        if (!dictState.word) return;
+        if (!hasApi('save_vocab_word')) {
+          showToast('Vocabulary is unavailable in this build.', { icon: 'alert', tone: 'danger' });
+          return;
+        }
+        var song = AppState.track ? (AppState.track.title || '') : '';
+        callApi('save_vocab_word', dictState.word, dictState.romaji, dictState.meaning, dictState.language, song)
+          .then(function (ok) {
+            if (ok === false) {
+              showToast('Could not save this word.', { icon: 'alert', tone: 'danger' });
+              return;
+            }
+            if (el.btnStudySave) el.btnStudySave.textContent = '✓ Saved';
+            vocabLoaded = false;
+            showToast('Saved “' + dictState.word + '” to vocabulary', { icon: 'bookmark' });
+          });
+      });
+    }
+    if (el.btnDictClose) el.btnDictClose.addEventListener('click', function () { el.dictCard.hidden = true; });
+    if (el.btnDictSpeak) el.btnDictSpeak.addEventListener('click', function () { speakWord(dictState.word, dictState.language); });
+    if (el.btnDictCopy) {
+      el.btnDictCopy.addEventListener('click', function () {
+        var text = dictState.word + (dictState.romaji ? ' (' + dictState.romaji + ')' : '') + ': ' + dictState.meaning;
+        copyText(text).then(function () { showToast('Definition copied', { icon: 'copy' }); });
+      });
+    }
+    if (el.btnDictSave) {
+      el.btnDictSave.addEventListener('click', function () {
+        if (!dictState.word) return;
+        var song = AppState.track ? (AppState.track.title || '') : '';
+        callApi('save_vocab_word', dictState.word, dictState.romaji, dictState.meaning, dictState.language, song)
+          .then(function (ok) {
+            if (ok !== false) {
+              el.btnDictSave.classList.add('active');
+              vocabLoaded = false;
+              showToast('Saved to vocabulary', { icon: 'bookmark' });
+            }
+          });
+      });
+    }
   }

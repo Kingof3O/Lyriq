@@ -25,6 +25,14 @@
     contextLineIndex = -1;
   }
 
+  function studyContextLine() {
+    if (contextLineIndex < 0) { closeLineContext(); return; }
+    var line = AppState.lyrics[contextLineIndex];
+    closeLineContext();
+    if (!line) return;
+    triggerWordLookup(line.original, window.innerWidth / 2, 200, line.original, line.translation);
+  }
+
   function copyContextLine() {
     if (contextLineIndex < 0) return;
     copyText(lineText(AppState.lyrics[contextLineIndex])).then(function () {
@@ -154,3 +162,8 @@
     });
   }
 
+  function wireContextMenuActions() {
+    if (el.ctxStudy) el.ctxStudy.addEventListener('click', studyContextLine);
+    if (el.ctxCopy) el.ctxCopy.addEventListener('click', copyContextLine);
+    if (el.ctxEdit) el.ctxEdit.addEventListener('click', editContextLine);
+  }

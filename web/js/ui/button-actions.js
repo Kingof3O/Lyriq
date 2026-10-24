@@ -147,4 +147,72 @@
       if (event.target === el.historyModal) closeHistory();
     });
     el.btnVocabClose.addEventListener('click', closeVocab);
+      wireStudyActions();
+    wireContextMenuActions();
+    if (el.btnStudyLensOpen) el.btnStudyLensOpen.addEventListener('click', function () { closeOverflow(); openActiveStudyLens(); });
+    if (el.btnExportVocab) {
+      el.btnExportVocab.addEventListener('click', function () {
+        callApi('export_vocab_csv').then(function (msg) {
+          showToast(msg || 'Exported vocabulary to Desktop', { icon: 'file-text' });
+        });
+      });
+    }
+
+    // Lyric viewport scroll & track interactions
+    el.lyricsViewport.addEventListener('wheel', function () {
+      AppState.userScrollUntil = Date.now() + 2600;
+    }, { passive: true });
+    el.lyricsViewport.addEventListener('touchmove', function () {
+      AppState.userScrollUntil = Date.now() + 2600;
+    }, { passive: true });
+    el.lyricsViewport.addEventListener('scroll', function () {
+      if (el.scrollRailThumb) {
+        var range = el.lyricsViewport.scrollHeight - el.lyricsViewport.clientHeight;
+        if (range > 0) {
+          var pct = (el.lyricsViewport.scrollTop / range) * 82;
+          el.scrollRailThumb.style.top = Math.min(82, Math.max(0, pct)) + '%';
+        }
+      }
+    }, { passive: true });
+
+    // Single click: seek to line timestamp in Spotify
+    el.lyricsList.addEventListener('click', function (event) {
+      if (editingState) return;
+      var lineEl = event.target.closest('.lyric-line');
+      if (!lineEl || event.target.isContentEditable) return;
+      var selection = window.getSelection();
+      if (selection && !selection.isCollapsed && selection.toString().trim()) return;
+      var index = Number(lineEl.dataset.index);
+      var line = AppState.lyrics[index];
+      if (line && line.time >= 0) seekTo(Math.max(0, line.time - AppState.offset), true);
+    });
+
+    // Right-click: context menu (Study, Copy, Edit)
+    el.lyricsList.addEventListener('contextmenu', function (event) {
+      if (editingState) return;
+      var lineEl = event.target.closest('.lyric-line');
+      if (!lineEl) return;
+      event.preventDefault();
+      openLineContext(Number(lineEl.dataset.index), event.clientX, event.clientY);
+    });
+
+    // Double-click: instant Study Lens inspection
+    el.lyricsList.addEventListener('dblclick', function (event) {
+      if (editingState) return;
+      var lineEl = event.target.closest('.lyric-line');
+      if (!lineEl) return;
+      event.stopPropagation();
+      var origText = lineEl.querySelector('.line-original') ? lineEl.querySelector('.line-original').textContent : '';
+      var transText = lineEl.querySelector('.line-translation') ? lineEl.querySelector('.line-translation').textContent : '';
+      var selection = window.getSelection();
+      var word = selection ? selection.toString().trim() : '';
+      if (!word) {
+        var origNode = lineEl.querySelector('.line-original');
+        word = (origNode ? origNode.textContent : '').trim();
+      }
+      if (word) {
+        triggerWordLookup(word, event.clientX, event.clientY, origText, transText);
+      }
+    });
+
   }

@@ -260,7 +260,7 @@ class LyriqVerificationHandler(http.server.SimpleHTTPRequestHandler):
                     var sw = document.getElementById('studyWord'); if (sw) sw.textContent = '죄책감';
                     var sp = document.getElementById('studyPron'); if (sp) sp.textContent = 'joechaekgam • Noun';
                     var sd = document.getElementById('studyDef'); if (sd) sd.textContent = 'Guilt; guilty conscience; remorse for actions';
-                    var sq = document.getElementById('studyQuote'); if (sq) sq.innerHTML = '더 깊숙이 파고드는 <span class="selected-word-highlight">죄책감</span>';
+                    var sqo = document.getElementById('studyQuoteOriginal'); if (sqo) sqo.innerHTML = '더 깊숙이 파고드는 <span class="selected-word-highlight">죄책감</span>';
                     var sqt = document.getElementById('studyQuoteTrans'); if (sqt) sqt.textContent = 'Guilt digging in even deeper';
                   }}
                 }} else if (scenario === 'palette') {{
