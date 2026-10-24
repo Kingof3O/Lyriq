@@ -22,6 +22,7 @@ class MediaListener:
 
         self.last_track_key = None
         self.cached_thumbnail = None
+        self._no_session_emitted = False
 
     def start(self):
         self.running = True
@@ -57,14 +58,34 @@ class MediaListener:
                 if found_session != self.spotify_session:
                     self._unbind_events()
                     self.spotify_session = found_session
+                    self._no_session_emitted = False
                     if self.spotify_session:
                         self._bind_events()
 
                 if self.spotify_session:
                     await self._emit_state(is_seek=False)
                 else:
-                    if self.callback:
-                        self.callback({"status": 0})
+                    if not self._no_session_emitted:
+                        self._no_session_emitted = True
+                        self.last_track_key = None
+                        self.cached_thumbnail = None
+                        if self.callback:
+                            self.callback({
+                                "status": 0,
+                                "track_changed": True,
+                                "title": "",
+                                "artist": ""
+                            })
+                    elif self.callback:
+                        self.callback({
+                            "status": 0,
+                            "position_ms": 0,
+                            "is_playing": False,
+                            "playback_rate": 1.0,
+                            "timestamp": round(time.time() * 1000, 1),
+                            "is_seek": False,
+                            "track_changed": False
+                        })
 
             except Exception as e:
                 logger.debug(f"Media read error: {e}")
@@ -114,9 +135,10 @@ class MediaListener:
             title = props.title or ""
             artist = props.artist or ""
             track_key = f"{artist} - {title}"
+            track_changed = track_key != self.last_track_key
 
             # Only read and base64-encode thumbnail when track changes (saves CPU & memory!)
-            if track_key != self.last_track_key:
+            if track_changed:
                 self.last_track_key = track_key
                 self.cached_thumbnail = None
                 if props.thumbnail:
@@ -136,25 +158,55 @@ class MediaListener:
             duration = timeline.end_time.total_seconds()
             last_updated = timeline.last_updated_time
 
+            try:
+                playback_rate = float(getattr(info, "playback_rate", 1.0))
+            except Exception:
+                playback_rate = 1.0
+            if not (playback_rate > 0) or playback_rate < 0.25 or playback_rate > 4.0:
+                playback_rate = 1.0
+
             now = datetime.datetime.now(datetime.timezone.utc)
             if status == 4 and last_updated: # 4 = Playing
-                elapsed = (now - last_updated).total_seconds()
+                elapsed = (now - last_updated).total_seconds() * playback_rate
                 precise_pos = max(0.0, min(duration, raw_pos + elapsed))
             else:
                 precise_pos = raw_pos
 
-            data = {
-                "app": "Spotify",
-                "title": title,
-                "artist": artist,
-                "album": props.album_title or "",
-                "thumbnail": self.cached_thumbnail,
-                "status": status,
-                "position": round(precise_pos, 2),
-                "duration": round(duration, 2),
-                "timestamp": round(time.time() * 1000, 1),
-                "is_seek": is_seek
-            }
+            timestamp = round(time.time() * 1000, 1)
+            is_playing = status == 4
+            position_ms = int(round(precise_pos * 1000))
+
+            if track_changed:
+                # Full payload only when the track actually changes: this is
+                # the only place the base64 thumbnail and metadata travel.
+                data = {
+                    "app": "Spotify",
+                    "title": title,
+                    "artist": artist,
+                    "album": props.album_title or "",
+                    "thumbnail": self.cached_thumbnail,
+                    "status": status,
+                    "position": round(precise_pos, 2),
+                    "position_ms": position_ms,
+                    "duration": round(duration, 2),
+                    "duration_ms": int(round(duration * 1000)),
+                    "is_playing": is_playing,
+                    "playback_rate": playback_rate,
+                    "timestamp": timestamp,
+                    "is_seek": is_seek,
+                    "track_changed": True
+                }
+            else:
+                # Lightweight tick: no title/artist/album/thumbnail/duration.
+                data = {
+                    "status": status,
+                    "position_ms": position_ms,
+                    "is_playing": is_playing,
+                    "playback_rate": playback_rate,
+                    "timestamp": timestamp,
+                    "is_seek": is_seek,
+                    "track_changed": False
+                }
             if self.callback:
                 self.callback(data)
         except Exception:

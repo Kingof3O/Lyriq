@@ -1005,6 +1005,12 @@ kbd {
   transform: scale(1.04);
 }
 
+/* Plain (unsynced) lyrics: readable static list, no focus dimming. */
+.lyrics-static .lyric-line {
+  opacity: 0.9;
+  filter: none;
+}
+
 .lyric-line.active::before {
   content: '';
   position: absolute;

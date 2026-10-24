@@ -69,46 +69,89 @@ class LyricsService:
         except Exception:
             return ""
 
-    def fetch_lyrics(self, artist: str, title: str, duration: float = 0):
+    def fetch_lyrics(self, artist: str, title: str, duration: float = 0,
+                     should_abort=None):
+        def aborted() -> bool:
+            return bool(should_abort and should_abort())
+
+        if aborted():
+            return None
+
         # 1. Check local offline SQLite cache first
         cached = self.cache.get_lyrics(artist, title)
+        if aborted():
+            return None
         if cached:
+            if isinstance(cached, dict):
+                cached_lines = cached.get("lines") or []
+                cached["is_synced"] = bool(cached.get("is_synced")) and bool(
+                    cached_lines
+                ) and all(line.get("time", -1) >= 0 for line in cached_lines)
             return cached
 
         variations = self.get_variations(artist, title)
+        if aborted():
+            return None
 
         for a, t in variations:
+            if aborted():
+                return None
             lyrics = self._query_lrclib(a, t, duration)
+            if aborted():
+                return None
             if lyrics and (lyrics.get("syncedLyrics") or lyrics.get("plainLyrics")):
                 result = self._format_lyrics(lyrics, a, t)
+                if aborted():
+                    return None
                 self.cache.save_lyrics(artist, title, result)
                 return result
 
         for a, t in variations:
+            if aborted():
+                return None
             lyrics = self._search_lrclib(a, t, duration)
+            if aborted():
+                return None
             if lyrics and (lyrics.get("syncedLyrics") or lyrics.get("plainLyrics")):
                 result = self._format_lyrics(lyrics, a, t)
+                if aborted():
+                    return None
                 self.cache.save_lyrics(artist, title, result)
                 return result
 
         # Fallback 3: Search by sanitized clean title
         clean_title = re.sub(r"[^\w\s]", " ", title).strip()
         if clean_title and clean_title != title:
+            if aborted():
+                return None
             lyrics = self._search_lrclib(artist, clean_title, duration)
+            if aborted():
+                return None
             if lyrics and (lyrics.get("syncedLyrics") or lyrics.get("plainLyrics")):
                 result = self._format_lyrics(lyrics, artist, title)
+                if aborted():
+                    return None
                 self.cache.save_lyrics(artist, title, result)
                 return result
 
         return None
 
     def _format_lyrics(self, lyrics: dict, artist: str, title: str) -> dict:
-        parsed = self.parse_lrc(lyrics.get("syncedLyrics") or lyrics.get("plainLyrics") or "")
+        synced_text = lyrics.get("syncedLyrics") or ""
+        plain_text = lyrics.get("plainLyrics") or ""
+        parsed = self.parse_lrc(synced_text or plain_text)
+
+        # Only a parsed timestamped LRC counts as synced.  Plain provider
+        # lyrics are returned with time=-1 and must render statically.
+        is_synced = bool(synced_text) and bool(parsed) and all(
+            line.get("time", -1) >= 0 for line in parsed
+        )
+
         return {
             "id": lyrics.get("id"),
             "title": lyrics.get("trackName") or title,
             "artist": lyrics.get("artistName") or artist,
-            "is_synced": bool(lyrics.get("syncedLyrics")),
+            "is_synced": is_synced,
             "lines": parsed
         }
 

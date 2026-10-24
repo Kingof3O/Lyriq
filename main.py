@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import math
 import time
 import threading
 import ctypes
@@ -15,6 +16,11 @@ from translator_service import TranslatorService
 from romanizer import Romanizer
 from discord_rpc import DiscordRPC
 from cache_service import get_cache
+
+
+def _make_track_key(artist, title):
+    return f"{artist or ''} - {title or ''}"
+
 
 class HotkeyThread(threading.Thread):
     def __init__(self, app):
@@ -301,7 +307,7 @@ class AppAPI:
 
     def load_history_song(self, artist, title):
         if artist and title:
-            threading.Thread(target=self._app._fetch_and_translate_lyrics, args=(artist, title, 0), daemon=True).start()
+            self._app.load_history_lyrics(artist, title)
 
     # Vocabulary Notebook
     def save_vocab_word(self, word, romaji, meaning, lang, song_title):
@@ -370,11 +376,19 @@ class SpotifyLyricsApp:
         self.discord_rpc = DiscordRPC()
 
         self.current_track = None
+        self.last_track_key = None
+        self.current_artist = ""
+        self.current_title = ""
+        self.current_duration = 0.0
+        self.current_lyrics_key = None
         self.current_lyrics = None
         self.last_sync_time = 0
         self.last_position = 0
         self.playback_status = 0
-        self.is_fetching = False
+
+        # Guards generation/track state only; never held during network calls.
+        self.state_lock = threading.Lock()
+        self.current_generation_id = 0
 
         self.api = AppAPI(self)
 
@@ -465,58 +479,192 @@ class SpotifyLyricsApp:
         except Exception as e:
             print("Toggle show/hide error:", e)
 
+    @staticmethod
+    def _position_seconds(data):
+        if data.get("position_ms") is not None:
+            try:
+                return max(0.0, float(data["position_ms"]) / 1000.0)
+            except (TypeError, ValueError):
+                pass
+        try:
+            return max(0.0, float(data.get("position", 0.0) or 0.0))
+        except (TypeError, ValueError):
+            return 0.0
+
+    @staticmethod
+    def _playback_rate(data):
+        try:
+            rate = float(data.get("playback_rate", 1.0))
+        except (TypeError, ValueError):
+            return 1.0
+        if not math.isfinite(rate) or rate <= 0:
+            return 1.0
+        return max(0.25, min(4.0, rate))
+
+    def _is_current_fetch(self, generation_id, artist, title):
+        """True only while this generation still owns the active lyrics target."""
+        with self.state_lock:
+            return (
+                generation_id == self.current_generation_id
+                and self.current_lyrics_key == _make_track_key(artist, title)
+            )
+
+    def _update_discord(self, artist, title, status, position_seconds):
+        if title and artist and status == 4:
+            self.discord_rpc.update_presence(title, artist, "", position_seconds)
+        elif status == 5:
+            self.discord_rpc.clear()
+
     def on_media_update(self, data):
         if not data:
             return
 
-        title = data.get("title", "")
-        artist = data.get("artist", "")
-        album = data.get("album", "")
-        status = data.get("status", 0)
-        pos = data.get("position", 0.0)
-        duration = data.get("duration", 0.0)
-        is_seek = data.get("is_seek", False)
+        track_changed = bool(data.get("track_changed", False))
+        try:
+            status = int(data.get("status", 0))
+        except (TypeError, ValueError):
+            status = 0
+        position = self._position_seconds(data)
 
-        self.last_position = pos
-        self.last_sync_time = time.time()
-        self.playback_status = status
+        with self.state_lock:
+            current_track = self.current_track
+            current_artist = self.current_artist
+            current_title = self.current_title
 
-        track_key = f"{artist} - {title}"
+        # Delta ticks omit title/artist; fall back to the remembered track.
+        title = data.get("title")
+        artist = data.get("artist")
+        title = current_title if title is None else title
+        artist = current_artist if artist is None else artist
+        title = title or ""
+        artist = artist or ""
+        track_key = _make_track_key(artist, title)
 
-        # If track changed
-        if track_key != self.current_track:
-            self.current_track = track_key
-            self.current_lyrics = None
-
-            # Record in persistent history
-            if title and artist:
-                self.lyrics_service.cache.record_song_play(artist, title, album, data.get("thumbnail", ""))
-
-            # Attach is_favorite status
-            data["is_favorite"] = self.lyrics_service.cache.is_favorite(artist, title)
-
-            # Update track info & thumbnail immediately
-            self.evaluate_js(f"window.updateTrack({json.dumps(data)})")
-
-            if title and artist:
-                threading.Thread(target=self._fetch_and_translate_lyrics, args=(artist, title, duration), daemon=True).start()
+        if track_changed or not current_track or track_key != current_track:
+            self._apply_track_change(data, artist, title, status, position)
         else:
-            data["is_favorite"] = self.lyrics_service.cache.is_favorite(artist, title)
-            self.evaluate_js(f"window.updateTrack({json.dumps(data)})")
+            self._apply_playback_delta(data, status, position)
 
-        # Discord Rich Presence Update
-        if title and artist and status == 4:
-            self.discord_rpc.update_presence(title, artist, "", pos)
-        elif status == 5:
-            self.discord_rpc.clear()
+        # Discord RPC already throttles internally; keep it on both paths.
+        self._update_discord(artist, title, status, position)
 
-    def _fetch_and_translate_lyrics(self, artist, title, duration):
-        if self.is_fetching:
+    def _apply_track_change(self, data, artist, title, status, position):
+        album = data.get("album", "")
+        duration = data.get("duration")
+        if duration is None and data.get("duration_ms") is not None:
+            try:
+                duration = float(data["duration_ms"]) / 1000.0
+            except (TypeError, ValueError):
+                duration = 0.0
+        try:
+            duration = float(duration or 0.0)
+        except (TypeError, ValueError):
+            duration = 0.0
+        track_key = _make_track_key(artist, title)
+
+        with self.state_lock:
+            self.current_generation_id += 1
+            generation_id = self.current_generation_id
+            self.current_track = track_key
+            self.last_track_key = track_key
+            self.current_artist = artist
+            self.current_title = title
+            self.current_duration = duration
+            self.current_lyrics_key = track_key
+            self.current_lyrics = None
+            self.last_position = position
+            self.last_sync_time = time.time()
+            self.playback_status = status
+
+        # History and favourite state are read once per track, never per tick.
+        if title and artist:
+            self.lyrics_service.cache.record_song_play(
+                artist, title, album, data.get("thumbnail", "")
+            )
+            is_favorite = self.lyrics_service.cache.is_favorite(artist, title)
+        else:
+            is_favorite = False
+
+        payload = dict(data)
+        payload["is_favorite"] = is_favorite
+        payload["track_changed"] = True
+        payload.setdefault("status", status)
+        payload.setdefault("position", position)
+        payload.setdefault("duration", duration)
+        payload.setdefault("playback_rate", self._playback_rate(data))
+        payload.setdefault("is_playing", status == 4)
+
+        self.evaluate_js(f"window.updateTrack({json.dumps(payload)})")
+
+        if title and artist:
+            threading.Thread(
+                target=self._fetch_and_translate_lyrics,
+                args=(artist, title, duration, generation_id),
+                daemon=True
+            ).start()
+
+    def _apply_playback_delta(self, data, status, position):
+        with self.state_lock:
+            self.last_position = position
+            self.last_sync_time = time.time()
+            self.playback_status = status
+            duration = self.current_duration
+
+        if data.get("duration") is not None:
+            try:
+                duration = float(data.get("duration") or 0.0)
+            except (TypeError, ValueError):
+                pass
+        elif data.get("duration_ms") is not None:
+            try:
+                duration = float(data["duration_ms"]) / 1000.0
+            except (TypeError, ValueError):
+                pass
+
+        with self.state_lock:
+            self.current_duration = duration
+
+        payload = {
+            "position_ms": int(round(position * 1000)),
+            "is_playing": status == 4,
+            "playback_rate": self._playback_rate(data),
+            "duration_ms": int(round(duration * 1000)),
+        }
+        self.evaluate_js(f"window.updatePlaybackState({json.dumps(payload)})")
+
+    def load_history_lyrics(self, artist, title):
+        """Fetch a history song without disturbing the live track identity."""
+        with self.state_lock:
+            self.current_generation_id += 1
+            generation_id = self.current_generation_id
+            self.current_lyrics_key = _make_track_key(artist, title)
+            self.current_lyrics = None
+        threading.Thread(
+            target=self._fetch_and_translate_lyrics,
+            args=(artist, title, 0, generation_id),
+            daemon=True
+        ).start()
+
+    def _fetch_and_translate_lyrics(self, artist, title, duration, generation_id=None):
+        with self.state_lock:
+            if generation_id is None:
+                generation_id = self.current_generation_id
+            if self.current_lyrics_key is None:
+                self.current_lyrics_key = _make_track_key(artist, title)
+
+        def should_abort():
+            return not self._is_current_fetch(generation_id, artist, title)
+
+        if should_abort():
             return
-        self.is_fetching = True
+
         try:
             # 1. Fetch Synced Lyrics
-            lyrics_data = self.lyrics_service.fetch_lyrics(artist, title, duration)
+            lyrics_data = self.lyrics_service.fetch_lyrics(
+                artist, title, duration, should_abort=should_abort
+            )
+            if should_abort():
+                return
             if not lyrics_data or not lyrics_data.get("lines"):
                 self.evaluate_js("window.updateLyrics(null)")
                 return
@@ -531,28 +679,50 @@ class SpotifyLyricsApp:
                 "lang": "unknown",
                 "lines": raw_lines
             }
+            if should_abort():
+                return
             self.evaluate_js(f"window.updateLyrics({json.dumps(initial_payload)})")
 
             # 3. BACKGROUND TRANSLATION & PHONETICS
-            translated_lines, dominant_lang = self.translator_service.translate_lines(raw_lines)
-            
+            translated_lines, dominant_lang = self.translator_service.translate_lines(
+                raw_lines, should_abort=should_abort
+            )
+            if should_abort():
+                return
+
             # 4. Stream translations + romanizations into rendered lines
             trans_payload = {
                 "lang": dominant_lang,
                 "lines": translated_lines
             }
+            if should_abort():
+                return
             self.evaluate_js(f"window.updateTranslations({json.dumps(trans_payload)})")
 
         except Exception as e:
             print(f"Lyrics/Translation error: {e}")
-            self.evaluate_js("window.updateLyrics(null)")
-        finally:
-            self.is_fetching = False
+            if not should_abort():
+                self.evaluate_js("window.updateLyrics(null)")
 
     def reload_current_lyrics(self):
-        if self.current_track and " - " in self.current_track:
-            artist, title = self.current_track.split(" - ", 1)
-            threading.Thread(target=self._fetch_and_translate_lyrics, args=(artist, title, 0), daemon=True).start()
+        with self.state_lock:
+            artist = self.current_artist
+            title = self.current_title
+            duration = self.current_duration
+            if not artist or not title:
+                return
+            # Bumping the generation invalidates any in-flight language switch
+            # or lyrics fetch for the previous generation.
+            self.current_generation_id += 1
+            generation_id = self.current_generation_id
+            self.current_lyrics_key = _make_track_key(artist, title)
+            self.current_lyrics = None
+
+        threading.Thread(
+            target=self._fetch_and_translate_lyrics,
+            args=(artist, title, duration, generation_id),
+            daemon=True
+        ).start()
 
     def evaluate_js(self, script):
         if self.window:

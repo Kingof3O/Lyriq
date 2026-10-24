@@ -2,10 +2,21 @@ import urllib.request
 import urllib.parse
 import json
 import logging
+import re
+from concurrent.futures import ThreadPoolExecutor
 from cache_service import get_cache
 from romanizer import Romanizer
 
 logger = logging.getLogger("TranslatorService")
+
+TRANSLATE_ENDPOINT = "https://translate.googleapis.com/translate_a/single"
+BATCH_SIZE = 35
+BATCH_TIMEOUT = 5
+SINGLE_TIMEOUT = 4.5
+MAX_FALLBACK_WORKERS = 4
+
+_MARKER_RE = re.compile(r"\[\[\s*(\d+)\s*\]\]")
+
 
 class TranslatorService:
     def __init__(self, target_lang="en"):
@@ -15,34 +26,51 @@ class TranslatorService:
     def set_target_lang(self, lang: str):
         self.target_lang = lang or "en"
 
-    def translate_lines(self, lines: list) -> tuple:
+    def translate_lines(self, lines: list, should_abort=None) -> tuple:
         """
         Takes: [{'time': float, 'text': str}, ...]
         Returns: ([{'time': float, 'original': str, 'translation': str, 'romaji': str}, ...], dominant_lang)
+
+        ``should_abort`` is checked between batches and before the cache is
+        written.  When it returns True the call returns ``([], "unknown")`` so
+        a stale track can never leak partially translated lyrics into the UI.
         """
         if not lines:
             return [], "unknown"
 
+        def aborted() -> bool:
+            return bool(should_abort and should_abort())
+
+        if aborted():
+            return [], "unknown"
+
         texts = [item.get("text", "").strip() for item in lines]
-        unique_texts = list(set([t for t in texts if t]))
+        # Order-preserving dedupe: translation indices stay stable.
+        unique_texts = list(dict.fromkeys([t for t in texts if t]))
 
         # 1. Query local SQLite cache
         cached_data = self.cache.get_translations_batch(unique_texts, self.target_lang)
 
         # 2. Find missing texts that need online translation
         missing_texts = [t for t in unique_texts if t not in cached_data]
-        
+
         new_cached_entries = {}
         dominant_lang = "unknown"
 
         if missing_texts:
-            chunk_size = 35
-            for i in range(0, len(missing_texts), chunk_size):
-                chunk = missing_texts[i:i + chunk_size]
-                tr_chunk, romaji_chunk, lang = self._translate_batch(chunk)
+            for i in range(0, len(missing_texts), BATCH_SIZE):
+                if aborted():
+                    return [], "unknown"
+
+                chunk = missing_texts[i:i + BATCH_SIZE]
+                tr_chunk, romaji_chunk, lang = self._translate_chunk(chunk)
+
                 if lang != "unknown" and dominant_lang == "unknown":
                     dominant_lang = lang
-                for src, trans, rom in zip(chunk, tr_chunk, romaji_chunk):
+
+                for index, src in enumerate(chunk):
+                    trans = self._clean_cell(tr_chunk, index)
+                    rom = self._clean_cell(romaji_chunk, index)
                     # If romanization from translate API is empty, use local Romanizer
                     if not rom:
                         rom = Romanizer.romanize(src)
@@ -51,7 +79,11 @@ class TranslatorService:
                         "romaji": rom
                     }
 
-            # Save newly fetched translations & romanizations to SQLite
+            if aborted():
+                return [], "unknown"
+
+            # Save newly fetched translations & romanizations to SQLite only
+            # once the whole operation completed successfully.
             if new_cached_entries:
                 self.cache.save_translations_batch(new_cached_entries, self.target_lang)
 
@@ -64,7 +96,7 @@ class TranslatorService:
             data = all_data.get(original, {})
             tr = data.get("translation", "")
             romaji = data.get("romaji", "")
-            
+
             # If translation is identical to original, treat as no translation needed
             if tr.strip().lower() == original.strip().lower() or len(original) <= 1:
                 final_tr = ""
@@ -83,65 +115,205 @@ class TranslatorService:
 
         return enriched, dominant_lang
 
+    # ------------------------------------------------------------------
+    # Chunk translation / fallback handling
+    # ------------------------------------------------------------------
+    def _translate_chunk(self, chunk: list) -> tuple:
+        """Translate one chunk, falling back per line if the batch is invalid."""
+        try:
+            tr_chunk, romaji_chunk, lang = self._translate_batch(chunk)
+        except Exception as exc:
+            logger.debug(f"Batch translation error: {exc}")
+            tr_chunk, romaji_chunk, lang = [], [], "unknown"
+
+        if self._is_aligned(tr_chunk, romaji_chunk, len(chunk)):
+            return list(tr_chunk), list(romaji_chunk), lang
+
+        logger.debug("Translation batch misaligned; retrying line by line.")
+        return self._translate_lines_individually(chunk)
+
+    @staticmethod
+    def _is_aligned(translations, romanizations, expected_count: int) -> bool:
+        return (
+            isinstance(translations, (list, tuple))
+            and isinstance(romanizations, (list, tuple))
+            and len(translations) == expected_count
+            and len(romanizations) == expected_count
+        )
+
+    @staticmethod
+    def _clean_cell(cells, index: int) -> str:
+        if not cells or index >= len(cells):
+            return ""
+        value = cells[index]
+        return value.strip() if isinstance(value, str) else ""
+
+    def _translate_lines_individually(self, texts: list) -> tuple:
+        """Translate each line separately, preserving index alignment."""
+        if not texts:
+            return [], [], "unknown"
+
+        results = [("", "", "unknown") for _ in texts]
+        workers = min(MAX_FALLBACK_WORKERS, len(texts))
+        try:
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures = {
+                    pool.submit(self._translate_single, text): index
+                    for index, text in enumerate(texts)
+                }
+                for future, index in futures.items():
+                    try:
+                        results[index] = future.result()
+                    except Exception as exc:
+                        logger.debug(f"Single translation error: {exc}")
+        except Exception as exc:
+            logger.debug(f"Translation pool error: {exc}")
+            for index, text in enumerate(texts):
+                try:
+                    results[index] = self._translate_single(text)
+                except Exception:
+                    results[index] = ("", "", "unknown")
+
+        translations = []
+        romanizations = []
+        lang = "unknown"
+        for index, (translation, romaji, line_lang) in enumerate(results):
+            translations.append(translation or "")
+            romanizations.append(romaji or Romanizer.romanize(texts[index]))
+            if lang == "unknown" and line_lang != "unknown":
+                lang = line_lang
+        return translations, romanizations, lang
+
+    def _translate_single(self, text: str) -> tuple:
+        """Translate one line. Returns (translation, romaji, lang)."""
+        if not text:
+            return "", "", "unknown"
+        try:
+            translated, romaji, lang = self._request_translation(text, SINGLE_TIMEOUT)
+        except Exception as exc:
+            logger.debug(f"Single translation request error: {exc}")
+            return "", "", "unknown"
+
+        romanization = romaji.strip() or Romanizer.romanize(text)
+        return translated, romanization, lang
+
     def _translate_batch(self, texts: list) -> tuple:
         """
-        Translates a batch and extracts both translated text and phonetic romanization (dt=['t', 'rm']).
-        Returns: (translations: list, romanizations: list, lang: str)
+        Translates a batch and extracts both translated text and phonetic romanization.
+        Returns exactly one translation/romanization per input line.
         """
         if not texts:
             return [], [], "unknown"
 
-        delimiter = "\n---@---\n"
-        full_text = delimiter.join(texts)
+        marked_text = "\n".join(f"[[{index}]] {text}" for index, text in enumerate(texts))
 
         try:
-            params = {
-                "client": "gtx",
-                "sl": "auto",
-                "tl": self.target_lang,
-                "dt": ["t", "rm"],
-                "q": full_text
-            }
-            url = "https://translate.googleapis.com/translate_a/single?" + urllib.parse.urlencode(params, doseq=True)
-            req = urllib.request.Request(
-                url, 
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            translated_str, romaji_str, lang = self._request_translation(
+                marked_text, BATCH_TIMEOUT
             )
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                if resp.status == 200:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    
-                    trans_parts = []
-                    romaji_parts = []
-                    
-                    if data and len(data) > 0 and isinstance(data[0], list):
-                        for seg in data[0]:
-                            if seg and seg[0] and isinstance(seg[0], str):
-                                trans_parts.append(seg[0])
-                            elif seg and seg[0] is None and len(seg) > 3 and isinstance(seg[3], str):
-                                romaji_parts = [r.strip() for r in seg[3].split("---@---")]
+        except Exception as exc:
+            logger.debug(f"Batch translation error: {exc}")
+            return self._translate_lines_individually(texts)
 
-                    translated_str = "".join(trans_parts)
-                    lang = data[2] if len(data) > 2 and isinstance(data[2], str) else "unknown"
-                    
-                    parts = translated_str.split("---@---")
-                    cleaned_trans = [p.strip() for p in parts]
-                    
-                    # Pad or slice translations
-                    if len(cleaned_trans) < len(texts):
-                        cleaned_trans += ["" for _ in range(len(texts) - len(cleaned_trans))]
-                    elif len(cleaned_trans) > len(texts):
-                        cleaned_trans = cleaned_trans[:len(texts)]
+        translations = self._parse_marked_translations(translated_str, len(texts))
+        if translations is None:
+            logger.debug("Translated batch lost its index markers; using per-line fallback.")
+            return self._translate_lines_individually(texts)
 
-                    # Pad or slice romanizations
-                    if len(romaji_parts) < len(texts):
-                        romaji_parts += ["" for _ in range(len(texts) - len(romaji_parts))]
-                    elif len(romaji_parts) > len(texts):
-                        romaji_parts = romaji_parts[:len(texts)]
+        romanizations = self._align_romanizations(romaji_str, texts)
+        return translations, romanizations, lang
 
-                    return cleaned_trans, romaji_parts, lang
+    def _align_romanizations(self, romaji_text: str, texts: list) -> list:
+        """Align API romanization to input lines or romanize locally."""
+        expected = len(texts)
+        if romaji_text:
+            marked = self._parse_marked_translations(romaji_text, expected)
+            if marked is not None:
+                return marked
 
-        except Exception as e:
-            logger.debug(f"Batch translation error: {e}")
+            raw_lines = romaji_text.splitlines()
+            if len(raw_lines) == expected:
+                aligned = [line.strip() for line in raw_lines]
+                return [
+                    aligned[index] or Romanizer.romanize(text)
+                    for index, text in enumerate(texts)
+                ]
 
-        return ["" for _ in texts], ["" for _ in texts], "unknown"
+        # Wrong shape (or no API romanization): never shift; romanize each line.
+        return [Romanizer.romanize(text) for text in texts]
+
+    def _request_translation(self, text: str, timeout: float) -> tuple:
+        """Return (translated_text, romaji_text, detected_lang) for one request."""
+        params = {
+            "client": "gtx",
+            "sl": "auto",
+            "tl": self.target_lang,
+            "dt": ["t", "rm"],
+            "q": text
+        }
+        url = TRANSLATE_ENDPOINT + "?" + urllib.parse.urlencode(params, doseq=True)
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if resp.status != 200:
+                return "", "", "unknown"
+            data = json.loads(resp.read().decode("utf-8"))
+
+        trans_parts = []
+        romaji_parts = []
+        if data and len(data) > 0 and isinstance(data[0], list):
+            for seg in data[0]:
+                if seg and len(seg) > 0 and isinstance(seg[0], str):
+                    trans_parts.append(seg[0])
+                elif seg and len(seg) > 3 and seg[0] is None and isinstance(seg[3], str):
+                    romaji_parts.append(seg[3])
+
+        translated_str = "".join(trans_parts).strip()
+        romaji_str = "\n".join(part.strip() for part in romaji_parts if part.strip())
+        lang = data[2] if len(data) > 2 and isinstance(data[2], str) else "unknown"
+        return translated_str, romaji_str, lang
+
+    # ------------------------------------------------------------------
+    # Pure marker parser (unit-testable, no network)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _parse_marked_translations(text: str, expected_count: int):
+        """Map ``[[n]] text`` markers back to their original indices.
+
+        Returns a list of ``expected_count`` translations ordered by index, or
+        ``None`` when the response is missing, duplicated, empty, unknown or
+        otherwise unsafe to align.
+        """
+        if expected_count <= 0:
+            return []
+
+        if not isinstance(text, str) or not text.strip():
+            return None
+
+        matches = list(_MARKER_RE.finditer(text))
+        if not matches:
+            return None
+
+        # Anything before the first marker is unexplained output: reject it so
+        # a leading line cannot silently shift every translation.
+        if text[:matches[0].start()].strip():
+            return None
+
+        found = {}
+        for position, match in enumerate(matches):
+            index = int(match.group(1))
+            if index < 0 or index >= expected_count or index in found:
+                return None
+
+            end = matches[position + 1].start() if position + 1 < len(matches) else len(text)
+            content = text[match.end():end].strip()
+            if not content:
+                return None
+            found[index] = content
+
+        if len(found) != expected_count:
+            return None
+
+        return [found[index] for index in range(expected_count)]

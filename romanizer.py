@@ -22,6 +22,9 @@ KANA_MAP = {
     'だ': 'da', 'ぢ': 'ji', 'づ': 'zu', 'で': 'de', 'ど': 'do',
     'ば': 'ba', 'び': 'bi', 'ぶ': 'bu', 'べ': 'be', 'ぼ': 'bo',
     'ぱ': 'pa', 'ぴ': 'pi', 'ぷ': 'pu', 'ぺ': 'pe', 'ぽ': 'po',
+    'ゔ': 'vu',
+    'ぁ': 'a', 'ぃ': 'i', 'ぅ': 'u', 'ぇ': 'e', 'ぉ': 'o',
+    'ゃ': 'ya', 'ゅ': 'yu', 'ょ': 'yo', 'ゎ': 'wa',
     'きゃ': 'kya', 'きゅ': 'kyu', 'きょ': 'kyo',
     'しゃ': 'sha', 'しゅ': 'shu', 'しょ': 'sho',
     'ちゃ': 'cha', 'ちゅ': 'chu', 'ちょ': 'cho',
@@ -35,19 +38,65 @@ KANA_MAP = {
     'ぴゃ': 'pya', 'ぴゅ': 'pyu', 'ぴょ': 'pyo',
 }
 
+HANGUL_RE = re.compile(r"[\uac00-\ud7a3]")
+KANA_RE = re.compile(r"[\u3040-\u309f\u30a0-\u30ff]")
+HAN_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+VOWELS = "aeiou"
+
+# pypinyin is optional: import it lazily so builds remain dependency-free.
+_pypinyin_module = None
+_pypinyin_checked = False
+
+
+def _get_pypinyin():
+    global _pypinyin_module, _pypinyin_checked
+    if not _pypinyin_checked:
+        try:
+            import pypinyin as module
+        except Exception:
+            module = None
+        _pypinyin_module = module
+        _pypinyin_checked = True
+    return _pypinyin_module
+
+
 class Romanizer:
+    @staticmethod
+    def detect_script(text: str) -> str:
+        """Return the dominant script: ``ko``, ``ja``, ``zh`` or ``""``."""
+        if not text:
+            return ""
+        if HANGUL_RE.search(text):
+            return "ko"
+        if KANA_RE.search(text):
+            return "ja"
+        if HAN_RE.search(text):
+            return "zh"
+        return ""
+
     @staticmethod
     def romanize(text: str, lang: str = "auto") -> str:
         if not text:
             return ""
 
         # Check for Korean Hangul
-        if re.search(r"[\uac00-\ud7a3]", text):
+        if HANGUL_RE.search(text):
             return Romanizer.hangul_to_romaja(text)
 
         # Check for Japanese Kana
-        if re.search(r"[\u3040-\u309f\u30a0-\u30ff]", text):
+        if KANA_RE.search(text):
             return Romanizer.kana_to_romaji(text)
+
+        # Chinese Han characters use optional pypinyin (tone-less by default).
+        if HAN_RE.search(text):
+            pypinyin = _get_pypinyin()
+            if pypinyin is None:
+                return ""
+            try:
+                syllables = pypinyin.lazy_pinyin(text)
+                return " ".join(str(syllable).lower() for syllable in syllables).strip()
+            except Exception:
+                return ""
 
         return ""
 
@@ -81,14 +130,42 @@ class Romanizer:
 
         res = []
         i = 0
+        geminate = False
         while i < len(converted):
+            char = converted[i]
+
+            # Small tsu doubles the next consonant.
+            if char == 'っ':
+                geminate = True
+                i += 1
+                continue
+
+            # Long vowel mark repeats the previous vowel.
+            if char == 'ー':
+                if res:
+                    previous = res[-1]
+                    for candidate in reversed(previous):
+                        if candidate in VOWELS:
+                            res.append(candidate)
+                            break
+                i += 1
+                continue
+
             if i + 1 < len(converted) and converted[i:i+2] in KANA_MAP:
-                res.append(KANA_MAP[converted[i:i+2]])
+                rom = KANA_MAP[converted[i:i+2]]
                 i += 2
-            elif converted[i] in KANA_MAP:
-                res.append(KANA_MAP[converted[i]])
+            elif char in KANA_MAP:
+                rom = KANA_MAP[char]
                 i += 1
             else:
-                res.append(converted[i])
+                res.append(char)
+                geminate = False
                 i += 1
+                continue
+
+            if geminate:
+                if rom and rom[0].isalpha() and rom[0] not in VOWELS:
+                    rom = rom[0] + rom
+                geminate = False
+            res.append(rom)
         return "".join(res)

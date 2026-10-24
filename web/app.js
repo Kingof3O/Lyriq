@@ -14,7 +14,9 @@ let isMiniExpanded = false;
 let isFullscreen = false;
 let isSplitLayout = false;
 let isPlaying = false;
+let playbackRate = 1.0;
 let isFavorite = false;
+let currentIsSynced = true;
 let currentSongTitle = "";
 let currentSongArtist = "";
 let currentSongThumbnail = "";
@@ -111,6 +113,7 @@ const btnNudgeReset = document.getElementById('btnNudgeReset');
 const nudgeOffsetVal = document.getElementById('nudgeOffsetVal');
 const checkSweep = document.getElementById('checkSweep');
 const checkRomaji = document.getElementById('checkRomaji');
+const elRomajiSettingsLabel = document.getElementById('romajiSettingsLabel');
 const checkLearner = document.getElementById('checkLearner');
 const checkDiscord = document.getElementById('checkDiscord');
 const checkGhost = document.getElementById('checkGhost');
@@ -219,7 +222,7 @@ function handleScrub(e) {
   elCurrentTime.textContent = formatTime(targetSeconds);
 
   basePosition = targetSeconds;
-  baseTimestamp = Date.now();
+  baseTimestamp = performance.now();
   window.updatePosition(targetSeconds, true);
 
   if (window.pywebview && window.pywebview.api) {
@@ -975,6 +978,29 @@ function startSpectrumVisualizer() {
 }
 
 // Python -> JS API Updates
+function setPlaybackUi(playing) {
+  isPlaying = Boolean(playing);
+  document.body.classList.toggle('paused', !isPlaying);
+  iconPlay.style.display = isPlaying ? 'none' : 'block';
+  iconPause.style.display = isPlaying ? 'block' : 'none';
+  islandIconPlay.style.display = isPlaying ? 'none' : 'block';
+  islandIconPause.style.display = isPlaying ? 'block' : 'none';
+}
+
+function romanizationLabel(lang) {
+  const normalized = String(lang || '').toLowerCase();
+  if (normalized.startsWith('zh')) return 'Pinyin';
+  if (normalized.startsWith('ja')) return 'Romaji';
+  if (normalized.startsWith('ko')) return 'Romaja';
+  return 'Romanization';
+}
+
+function updateRomanizationLabel(lang) {
+  if (elRomajiSettingsLabel) {
+    elRomajiSettingsLabel.textContent = `Phonetics (${romanizationLabel(lang)})`;
+  }
+}
+
 window.updateTrack = function(data) {
   if (!data || !data.title) {
     elTrackTitle.textContent = "Waiting for Spotify...";
@@ -982,6 +1008,8 @@ window.updateTrack = function(data) {
     elIslandSongTitle.textContent = "Waiting for Spotify...";
     elIslandSongArtist.textContent = "";
     document.body.classList.add('paused');
+    document.body.classList.remove('lyrics-static');
+    document.body.setAttribute('data-lyrics-synced', 'true');
     elIdleState.style.display = 'flex';
     elLyricsList.style.display = 'none';
     elNoLyricsState.style.display = 'none';
@@ -992,6 +1020,8 @@ window.updateTrack = function(data) {
     elIslandDisc.style.display = 'flex';
     elInstrumentalPill.style.display = 'none';
     isPlaying = false;
+    currentIsSynced = true;
+    playbackRate = 1.0;
     currentLyrics = [];
     basePosition = 0;
     baseTimestamp = 0;
@@ -1010,10 +1040,18 @@ window.updateTrack = function(data) {
   elTotalTime.textContent = formatTime(currentDuration);
 
   // Sync position timestamps
-  if (data.position !== undefined) {
-    basePosition = Number(data.position) || 0;
-    baseTimestamp = Number(data.timestamp) || Date.now();
+  if (data.position_ms !== undefined || data.position !== undefined) {
+    basePosition = data.position_ms !== undefined
+      ? (Number(data.position_ms) || 0) / 1000
+      : (Number(data.position) || 0);
+    baseTimestamp = performance.now();
     window.updatePosition(basePosition, Boolean(data.is_seek));
+  }
+
+  // Playback rate for smooth local extrapolation
+  {
+    const rate = Number(data.playback_rate);
+    playbackRate = Number.isFinite(rate) && rate > 0 ? Math.min(4.0, Math.max(0.25, rate)) : 1.0;
   }
 
   // Favorite Heart Status
@@ -1039,25 +1077,49 @@ window.updateTrack = function(data) {
   }
 
   // Playback Status
-  isPlaying = (data.status === 4);
-  if (isPlaying) {
-    document.body.classList.remove('paused');
-    iconPlay.style.display = 'none';
-    iconPause.style.display = 'block';
-    islandIconPlay.style.display = 'none';
-    islandIconPause.style.display = 'block';
-  } else {
-    document.body.classList.add('paused');
-    iconPlay.style.display = 'block';
-    iconPause.style.display = 'none';
-    islandIconPlay.style.display = 'block';
-    islandIconPause.style.display = 'none';
-    if (basePosition >= 0) {
-      window.updatePosition(basePosition, false);
-    }
+  setPlaybackUi(data.status === 4);
+  if (!isPlaying && basePosition >= 0) {
+    window.updatePosition(basePosition, false);
   }
 
   startSpectrumVisualizer();
+};
+
+// Lightweight 1.2 s delta: never rebuilds the track card or thumbnail.
+window.updatePlaybackState = function(data) {
+  if (!data) return;
+
+  const wasPlaying = isPlaying;
+
+  if (data.position_ms !== undefined && data.position_ms !== null) {
+    const nextPosition = Number(data.position_ms) / 1000;
+    if (Number.isFinite(nextPosition)) basePosition = Math.max(0, nextPosition);
+  } else if (data.position !== undefined && data.position !== null) {
+    const nextPosition = Number(data.position);
+    if (Number.isFinite(nextPosition)) basePosition = Math.max(0, nextPosition);
+  }
+  baseTimestamp = performance.now();
+
+  if (data.playback_rate !== undefined && data.playback_rate !== null) {
+    const rate = Number(data.playback_rate);
+    playbackRate = Number.isFinite(rate) && rate > 0 ? Math.min(4.0, Math.max(0.25, rate)) : 1.0;
+  }
+
+  if (data.duration_ms !== undefined && data.duration_ms !== null) {
+    const duration = Number(data.duration_ms) / 1000;
+    if (Number.isFinite(duration) && duration >= 0) {
+      currentDuration = duration;
+      elTotalTime.textContent = formatTime(currentDuration);
+    }
+  }
+
+  const playing = data.is_playing !== undefined
+    ? Boolean(data.is_playing)
+    : data.status === 4;
+  setPlaybackUi(playing);
+  window.updatePosition(basePosition, false);
+
+  if (playing && !wasPlaying) startSpectrumVisualizer();
 };
 
 window.updateLyrics = function(data) {
@@ -1067,7 +1129,12 @@ window.updateLyrics = function(data) {
     elLyricsList.style.display = 'none';
     elNoLyricsState.style.display = 'flex';
     elFlagBadge.style.display = 'none';
+    elInstrumentalPill.style.display = 'none';
+    document.body.classList.remove('lyrics-static');
+    document.body.setAttribute('data-lyrics-synced', 'true');
+    currentIsSynced = true;
     currentLyrics = [];
+    activeIndex = -1;
     elIslandLyricsScroll.innerHTML = '';
     return;
   }
@@ -1076,6 +1143,15 @@ window.updateLyrics = function(data) {
   elLyricsList.style.display = 'flex';
   currentLyrics = data.lines;
   activeIndex = -1;
+
+  // Plain (unsynced) lyrics render as a normal scrollable list with no
+  // active line, no auto-scroll and no karaoke sweep.
+  currentIsSynced = data.is_synced !== false;
+  document.body.classList.toggle('lyrics-static', !currentIsSynced);
+  document.body.setAttribute('data-lyrics-synced', currentIsSynced ? 'true' : 'false');
+  if (!currentIsSynced) {
+    elInstrumentalPill.style.display = 'none';
+  }
 
   // Language Flag Badge
   if (data.lang && data.lang !== 'unknown') {
@@ -1123,7 +1199,7 @@ window.updateLyrics = function(data) {
     div.addEventListener('click', () => {
       if (line.time >= 0 && window.pywebview && window.pywebview.api) {
         basePosition = line.time;
-        baseTimestamp = Date.now();
+        baseTimestamp = performance.now();
         window.updatePosition(line.time, true);
         window.pywebview.api.seek(line.time);
       }
@@ -1172,7 +1248,7 @@ window.updateLyrics = function(data) {
     miniItem.addEventListener('click', () => {
       if (line.time >= 0 && window.pywebview && window.pywebview.api) {
         basePosition = line.time;
-        baseTimestamp = Date.now();
+        baseTimestamp = performance.now();
         window.updatePosition(line.time, true);
         window.pywebview.api.seek(line.time);
       }
@@ -1199,6 +1275,7 @@ window.updateTranslations = function(data) {
     elFlagBadge.textContent = LANG_FLAGS[dominantLanguage] || `${data.lang.toUpperCase()}`;
     elFlagBadge.style.display = 'inline-block';
   }
+  updateRomanizationLabel(dominantLanguage);
 
   data.lines.forEach((item, index) => {
     if (index < currentLyrics.length) {
@@ -1231,11 +1308,28 @@ window.updateTranslations = function(data) {
   }
 };
 
+// Clear synchronized-only state (active line, karaoke sweep, instrumental pill).
+function clearSynchronizedState() {
+  if (activeIndex >= 0) {
+    for (let i = 0; i < currentLyrics.length; i++) {
+      const el = document.getElementById(`line-${i}`);
+      if (el) el.style.removeProperty('--line-progress');
+    }
+
+    const prevEl = document.getElementById(`line-${activeIndex}`);
+    if (prevEl) prevEl.classList.remove('active');
+    const prevMini = document.getElementById(`mini-line-${activeIndex}`);
+    if (prevMini) prevMini.classList.remove('active');
+    activeIndex = -1;
+  }
+  elInstrumentalPill.style.display = 'none';
+}
+
 // Position Tracker, Word-by-Word Karaoke Sweep & Instrumental Countdown
 window.updatePosition = function(seconds, isSeek = false) {
   if (isSeek) {
     basePosition = seconds;
-    baseTimestamp = Date.now();
+    baseTimestamp = performance.now();
   }
 
   const adjustedSeconds = Math.max(0, seconds + syncOffset);
@@ -1256,6 +1350,12 @@ window.updatePosition = function(seconds, isSeek = false) {
   }
 
   if (!currentLyrics || currentLyrics.length === 0) return;
+
+  // Plain lyrics: update time/scrubber only, never highlight or auto-scroll.
+  if (!currentIsSynced) {
+    clearSynchronizedState();
+    return;
+  }
 
   // Determine currently active line
   let newIndex = -1;
@@ -1340,8 +1440,8 @@ window.updatePosition = function(seconds, isSeek = false) {
 
 // Smooth Playback Loop (Native 60fps/144fps client-side animation, 0% CPU IPC overhead)
 function smoothPlaybackLoop() {
-  if (isPlaying && baseTimestamp > 0 && currentDuration > 0) {
-    const elapsed = (Date.now() - baseTimestamp) / 1000;
+  if (isPlaying && baseTimestamp > 0 && currentDuration > 0 && !document.hidden) {
+    const elapsed = ((performance.now() - baseTimestamp) / 1000) * playbackRate;
     const currentSec = Math.min(currentDuration, Math.max(0, basePosition + elapsed));
     window.updatePosition(currentSec, false);
   }
