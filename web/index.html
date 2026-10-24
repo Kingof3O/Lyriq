@@ -3,394 +3,571 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
   <title>Spotify Realtime Lyrics</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@500;700;900&family=Noto+Sans+KR:wght@500;700;900&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
 </head>
-<body class="mode-window view-both" data-theme="dynamic" data-lyrics-synced="true">
+<body class="mode-window view-both enable-sweep" data-theme="dark" data-theme-choice="system">
 
-  <!-- Ambient Dynamic Lighting Blobs (Tinted by Album Art) -->
-  <div class="mesh-bg">
-    <div class="orb orb-1" id="orb1"></div>
-    <div class="orb orb-2" id="orb2"></div>
-    <div class="orb orb-3" id="orb3"></div>
-  </div>
-  <div class="glass-backdrop" id="glassBackdrop"></div>
+  <svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="icon-play" viewBox="0 0 24 24"><path d="M7 4.5v15L19 12z"/></symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="icon-prev" viewBox="0 0 24 24"><path d="M19 5v14L7 12zM5 5v14"/></symbol>
+    <symbol id="icon-next" viewBox="0 0 24 24"><path d="M5 5v14l12-7zM19 5v14"/></symbol>
+    <symbol id="icon-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21.2l7.8-7.7 1.1-1.1a5.5 5.5 0 0 0-.1-7.8z"/></symbol>
+    <symbol id="icon-heart-filled" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21.2l7.8-7.7 1.1-1.1a5.5 5.5 0 0 0-.1-7.8z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="icon-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+    <symbol id="icon-disc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+    <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="icon-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="icon-pin" viewBox="0 0 24 24"><path d="M12 17v5M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>
+    <symbol id="icon-pip" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="12" y="12" width="6" height="5" rx="1"/></symbol>
+    <symbol id="icon-expand" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="icon-collapse" viewBox="0 0 24 24"><path d="M9 3v4a2 2 0 0 1-2 2H3M15 3v4a2 2 0 0 0 2 2h4M9 21v-4a2 2 0 0 0-2-2H3M15 21v-4a2 2 0 0 1 2-2h4"/></symbol>
+    <symbol id="icon-split" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></symbol>
+    <symbol id="icon-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="icon-pencil" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+    <symbol id="icon-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></symbol>
+    <symbol id="icon-captions" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 12h3M14 12h3M7 15h2M12 15h5"/></symbol>
+    <symbol id="icon-printer" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></symbol>
+    <symbol id="icon-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+    <symbol id="icon-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></symbol>
+    <symbol id="icon-bookmark" viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+    <symbol id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="icon-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="icon-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z"/></symbol>
+    <symbol id="icon-volume" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></symbol>
+    <symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15M10 10v7M14 10v7"/></symbol>
+    <symbol id="icon-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="icon-folder-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2H5a2 2 0 0 0-2 2z"/><path d="M5 11h16l-2 8H3z"/></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></symbol>
+    <symbol id="icon-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+    <symbol id="icon-keyboard" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6"/></symbol>
+    <symbol id="icon-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="icon-type" viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></symbol>
+    <symbol id="icon-zap" viewBox="0 0 24 24"><path d="M13 2L3 14h8l-1 8 10-12h-8z"/></symbol>
+    <symbol id="icon-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3 3.8M6.6 6.6A17 17 0 0 0 2 12s4 7 10 7a10 10 0 0 0 4.3-1"/></symbol>
+    <symbol id="icon-headphones" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2" y="14" width="4" height="7" rx="1.5"/><rect x="18" y="14" width="4" height="7" rx="1.5"/></symbol>
+    <symbol id="icon-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></symbol>
+    <symbol id="icon-command" viewBox="0 0 24 24"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/></symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="icon-chevron-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+    <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M12 3L2 21h20z"/><path d="M12 9v5M12 17h.01"/></symbol>
+    <symbol id="icon-cloud-off" viewBox="0 0 24 24"><path d="M3 3l18 18M7.5 7.5A5 5 0 0 1 17 11a4 4 0 0 1 2.5 7.2M5 11a4 4 0 0 0-1 7.8h10"/></symbol>
+    <symbol id="icon-external" viewBox="0 0 24 24"><path d="M14 3h7v7M21 3l-9 9M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="icon-wifi" viewBox="0 0 24 24"><path d="M2 8.8a16 16 0 0 1 20 0M5 12.5a11 11 0 0 1 14 0M8.5 16a6 6 0 0 1 7 0"/><circle cx="12" cy="19.5" r=".6" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="icon-window" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></symbol>
+  </svg>
 
-  <!-- Notification Toast Pill -->
-  <div class="toast-pill" id="toastPill" style="display: none;">
-    <span id="toastMsg">✓ Copied to clipboard!</span>
-  </div>
+  <div class="album-backdrop" id="albumBackdrop" aria-hidden="true"></div>
 
-  <!-- Main App Shell -->
   <div class="app-shell" id="appShell">
-    
-    <!-- Top Navigation Bar -->
-    <header class="app-navbar pywebview-drag-region">
-      <div class="brand-section">
-        <div class="status-indicator">
-          <span class="live-pulse"></span>
-          <svg class="spotify-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.308-1.76-8.792-.963-.335.077-.67-.133-.746-.468-.077-.334.132-.67.467-.746 3.808-.87 7.076-.496 9.721 1.114.294.18.387.562.207.856zm1.224-2.724c-.226.367-.71.482-1.077.256-2.69-1.654-6.79-2.134-9.97-1.168-.413.125-.85-.11-1.002-.524-.15-.413.111-.85.525-1.002 3.633-1.103 8.153-.566 11.235 1.325.367.226.482.71.256 1.077zm.106-2.836C14.692 8.95 8.56 8.75 5.01 9.83c-.496.15-1.022-.134-1.173-.63-.15-.497.134-1.023.63-1.174 4.08-1.238 10.84-1.01 14.673 1.265.447.265.592.846.326 1.293-.265.447-.847.592-1.294.326z"/>
-          </svg>
-        </div>
-        <span class="brand-text">Lyrics</span>
-        <span class="badge-pill flag-badge" id="flagBadge" style="display: none;">🇰🇷 KO</span>
-        <span class="badge-pill ghost-badge" id="ghostBadge" style="display: none;">GHOST (Ctrl+Shift+G)</span>
-        <span class="badge-pill timer-badge" id="sleepTimerBadge" style="display: none;" title="Click to cancel timer">🌙 30:00</span>
+    <header class="topbar pywebview-drag-region" id="topbar">
+      <div class="brand no-drag">
+        <span class="brand-mark" aria-hidden="true"><svg class="icon"><use href="#icon-music"></use></svg></span>
+        <span class="brand-name">Lyrics</span>
+        <span class="live-bars" id="liveBars" aria-hidden="true"><span></span><span></span><span></span></span>
       </div>
 
-      <!-- Segmented Button Bar -->
-      <div class="nav-controls no-drag">
-        <!-- Always on Top -->
-        <button class="nav-btn tooltip" id="btnPin" data-tip="Always on Top">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 17v5M9 2h6l1 7h-8zM7 9h10v3H7z"/></svg>
-        </button>
+      <div class="now-playing no-drag" id="trackCard">
+        <div class="np-art-wrap" id="npArtWrap" title="Scroll to change Windows volume">
+          <img class="np-art" id="trackArtwork" alt="" hidden>
+          <span class="np-art-fallback" id="trackDisc" aria-hidden="true"><svg class="icon"><use href="#icon-disc"></use></svg></span>
+        </div>
+        <div class="np-meta">
+          <div class="np-title-line">
+            <h1 class="track-title" id="trackTitle">Connecting to Spotify</h1>
+            <button class="icon-btn heart-btn" id="btnHeart" type="button" aria-label="Favorite song" aria-pressed="false" data-tooltip="Favorite">
+              <svg class="icon"><use id="heartUse" href="#icon-heart"></use></svg>
+            </button>
+          </div>
+          <p class="track-sub"><span id="trackArtist">Play a song to begin</span><span class="sep" id="subSep" aria-hidden="true" hidden>·</span><span id="trackAlbum"></span></p>
+        </div>
+      </div>
 
-        <!-- Mini Floating Island Mode -->
-        <button class="nav-btn tooltip" id="btnMini" data-tip="Floating Mini Island (Ctrl+Shift+M)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="13" width="18" height="8" rx="3"/><line x1="3" y1="8" x2="21" y2="8"/></svg>
-        </button>
+      <div class="top-badges no-drag" id="topBadges">
+        <span class="badge lang-badge" id="flagBadge" hidden></span>
+        <span class="badge provider-badge" id="providerBadge" hidden></span>
+        <span class="badge unsynced-badge" id="syncBadge" hidden>UNSYNCED</span>
+        <span class="badge ghost-badge" id="ghostBadge" hidden>GHOST</span>
+        <span class="badge timer-badge" id="sleepTimerBadge" tabindex="0" role="button" aria-label="Sleep timer active. Activate to cancel." hidden>
+          <svg class="icon" aria-hidden="true"><use href="#icon-timer"></use></svg><span id="sleepTimerText">--:--</span>
+        </span>
+        <span class="status-chip" id="translationStatus" hidden><span class="spinner" aria-hidden="true"></span><span>Translating</span></span>
+      </div>
 
-        <!-- Fullscreen Mode -->
-        <button class="nav-btn tooltip" id="btnFullscreen" data-tip="Fullscreen View (F11)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      <div class="top-actions no-drag">
+        <button class="icon-btn" id="btnMini" type="button" aria-label="Mini mode" data-tooltip="Mini mode (Ctrl+Shift+M)">
+          <svg class="icon"><use href="#icon-pip"></use></svg>
         </button>
+        <button class="icon-btn" id="btnFullscreen" type="button" aria-label="Fullscreen" aria-pressed="false" data-tooltip="Fullscreen (F11)">
+          <svg class="icon"><use href="#icon-expand"></use></svg>
+        </button>
+        <button class="icon-btn" id="btnSettings" type="button" aria-label="Settings" data-tooltip="Settings">
+          <svg class="icon"><use href="#icon-settings"></use></svg>
+        </button>
+        <button class="icon-btn" id="btnOverflow" type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded="false" data-tooltip="More actions">
+          <svg class="icon"><use href="#icon-more"></use></svg>
+        </button>
+        <span class="top-divider" aria-hidden="true"></span>
+        <button class="icon-btn window-btn" id="btnMin" type="button" aria-label="Minimize window" data-tooltip="Minimize">
+          <svg class="icon"><use href="#icon-minus"></use></svg>
+        </button>
+        <button class="icon-btn window-btn close-btn" id="btnClose" type="button" aria-label="Close window" data-tooltip="Close">
+          <svg class="icon"><use href="#icon-close"></use></svg>
+        </button>
+      </div>
 
-        <!-- Fullscreen Split-Layout Toggle (Only visible in Fullscreen) -->
-        <button class="nav-btn tooltip" id="btnSplitLayout" style="display: none;" data-tip="Toggle Split / Centered Layout">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
-        </button>
-
-        <!-- 3-Way Lyrics View Mode Switcher -->
-        <button class="nav-btn active tooltip mode-switcher" id="btnViewMode" data-tip="Mode: Dual / Translation / Original (Ctrl+Shift+L)">
-          <span class="btn-text" id="viewModeText">DUAL</span>
-        </button>
-
-        <!-- Quick Tools & Settings Drawer Toggle -->
-        <button class="nav-btn tooltip" id="btnToolsToggle" data-tip="Tools & Preferences">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
-
-        <div class="divider-vertical"></div>
-
-        <!-- Window Action Buttons -->
-        <button class="nav-btn win-icon" id="btnMin" title="Minimize">
-          <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </button>
-        <button class="nav-btn win-icon close-btn" id="btnClose" title="Close">
-          <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+      <div class="menu top-menu" id="overflowMenu" role="menu" aria-label="More actions" hidden>
+        <button class="menu-item" id="menuSearchLyrics" type="button" role="menuitem" data-icon="search"><span>Search lyrics</span></button>
+        <button class="menu-item" id="menuPalette" type="button" role="menuitem" data-icon="command"><span>Command palette</span><kbd>Ctrl K</kbd></button>
+        <div class="menu-sep" role="separator"></div>
+        <button class="menu-item" id="menuPin" type="button" role="menuitemcheckbox" aria-checked="false" data-icon="pin"><span>Always on top</span></button>
+        <button class="menu-item" id="btnSplitLayout" type="button" role="menuitemcheckbox" aria-checked="false" data-icon="split" hidden><span>Split layout</span></button>
+        <button class="menu-item" id="menuGhost" type="button" role="menuitemcheckbox" aria-checked="false" data-icon="eye-off"><span>Ghost mode</span></button>
+        <button class="menu-item" id="menuLowPower" type="button" role="menuitemcheckbox" aria-checked="false" data-icon="zap"><span>Low power</span></button>
+        <button class="menu-item" id="menuDiscord" type="button" role="menuitemcheckbox" aria-checked="true" data-icon="headphones"><span>Discord presence</span></button>
+        <div class="menu-sep" role="separator"></div>
+        <button class="menu-item" id="btnHistoryOpen" type="button" role="menuitem" data-icon="history"><span>Song history</span></button>
+        <button class="menu-item" id="btnVocabOpen" type="button" role="menuitem" data-icon="book"><span>Vocabulary</span></button>
+        <div class="menu-sep" role="separator"></div>
+        <button class="menu-item" id="menuExportLrc" type="button" role="menuitem" data-icon="file-text"><span>Export LRC</span></button>
+        <button class="menu-item" id="menuExportSrt" type="button" role="menuitem" data-icon="captions"><span>Export SRT</span></button>
+        <button class="menu-item" id="menuExportSheet" type="button" role="menuitem" data-icon="printer"><span>Export poster</span></button>
+        <button class="menu-item" id="menuOpenLrc" type="button" role="menuitem" data-icon="folder-open"><span>Open LRC folder</span></button>
       </div>
     </header>
 
-    <!-- Quick Settings Card Dropdown -->
-    <div class="settings-drawer" id="settingsDrawer" style="display: none;">
-      <div class="drawer-header">
-        <span>Preferences & Tools</span>
-        <button class="drawer-close" id="btnToolsClose">✕</button>
-      </div>
-
-      <!-- Theme Selector -->
-      <div class="setting-row">
-        <label>Aesthetic Theme</label>
-        <select id="selectTheme" class="select-box">
-          <option value="dynamic">Dynamic Mesh Aura</option>
-          <option value="oled">OLED Pure Black</option>
-          <option value="tokyo">Tokyo Night</option>
-          <option value="cyberpunk">Cyberpunk 2077</option>
-          <option value="nord">Nordic Frost</option>
-        </select>
-      </div>
-
-      <!-- Target Translation Language -->
-      <div class="setting-row">
-        <label>Translate Into</label>
-        <select id="selectLang" class="select-box">
-          <option value="en">English (EN)</option>
-          <option value="es">Spanish (ES)</option>
-          <option value="ar">Arabic (AR)</option>
-          <option value="fr">French (FR)</option>
-          <option value="de">German (DE)</option>
-          <option value="ja">Japanese (JA)</option>
-          <option value="ko">Korean (KO)</option>
-          <option value="pt">Portuguese (PT)</option>
-          <option value="ru">Russian (RU)</option>
-          <option value="zh">Chinese (ZH)</option>
-        </select>
-      </div>
-
-      <div class="setting-row">
-        <label>Glass Opacity</label>
-        <input type="range" id="sliderOpacity" min="30" max="100" value="84" class="range-slider" />
-        <span class="setting-val" id="opacityVal">84%</span>
-      </div>
-
-      <div class="setting-row">
-        <label>Sync Nudge</label>
-        <div class="nudge-group">
-          <button class="nudge-btn" id="btnNudgeMinus">-0.2s</button>
-          <span class="nudge-val" id="nudgeOffsetVal">0.0s</span>
-          <button class="nudge-btn" id="btnNudgePlus">+0.2s</button>
-          <button class="nudge-btn reset" id="btnNudgeReset">Reset</button>
+    <main class="workspace" id="workspace">
+      <section class="fullscreen-stage" id="fullscreenStage" aria-label="Now playing">
+        <div class="stage-art-wrap">
+          <img class="stage-art" id="stageArtwork" alt="" hidden>
+          <span class="stage-disc" id="stageDisc" aria-hidden="true"><svg class="icon"><use href="#icon-disc"></use></svg></span>
         </div>
-      </div>
-
-      <div class="setting-row">
-        <label>Syllable Karaoke Sweep</label>
-        <input type="checkbox" id="checkSweep" class="toggle-checkbox" checked />
-      </div>
-
-      <div class="setting-row">
-        <label id="romajiSettingsLabel">Phonetics (Romaji/Romaja/Pinyin)</label>
-        <input type="checkbox" id="checkRomaji" class="toggle-checkbox" checked />
-      </div>
-
-      <div class="setting-row">
-        <label>Word Lookup Tooltip (Double-Click)</label>
-        <input type="checkbox" id="checkLearner" class="toggle-checkbox" checked />
-      </div>
-
-      <div class="setting-row">
-        <label>Discord Rich Presence</label>
-        <input type="checkbox" id="checkDiscord" class="toggle-checkbox" checked />
-      </div>
-
-      <div class="setting-row">
-        <label>Gamer Ghost Mode (Click-Through)</label>
-        <input type="checkbox" id="checkGhost" class="toggle-checkbox" />
-      </div>
-
-      <div class="setting-row">
-        <label>Sleep Timer</label>
-        <select id="selectSleep" class="select-box">
-          <option value="0">Off</option>
-          <option value="15">15 Minutes</option>
-          <option value="30">30 Minutes</option>
-          <option value="45">45 Minutes</option>
-          <option value="60">60 Minutes</option>
-        </select>
-      </div>
-
-      <!-- Quick Action Buttons -->
-      <div class="setting-actions">
-        <div class="action-grid">
-          <button class="drawer-btn" id="btnHistoryOpen">🕒 Song History</button>
-          <button class="drawer-btn" id="btnVocabOpen">📚 Vocab Deck</button>
-        </div>
-        <div class="action-grid">
-          <button class="drawer-btn" id="btnCopyLine">📋 Copy Line</button>
-          <button class="drawer-btn" id="btnCopyAll">📄 Copy All</button>
-        </div>
-        <div class="action-grid">
-          <button class="drawer-btn" id="btnExportLrc">💾 Export .LRC</button>
-          <button class="drawer-btn" id="btnExportSrt">🎬 Export .SRT</button>
-        </div>
-        <button class="drawer-btn full-width" id="btnExportSheet">🖨️ Export Printable Lyric Poster (HTML)</button>
-      </div>
-
-      <!-- Global Windows Hotkeys Legend -->
-      <div class="hotkeys-box">
-        <div class="hotkeys-title">Global Shortcuts (Anywhere in Windows)</div>
-        <div class="hotkey-item"><kbd>Ctrl+Shift+G</kbd><span>Ghost Mode (Click-Through)</span></div>
-        <div class="hotkey-item"><kbd>Ctrl+Shift+M</kbd><span>Mini Island Overlay</span></div>
-        <div class="hotkey-item"><kbd>Ctrl+Shift+H</kbd><span>Boss Key (Hide / Show)</span></div>
-        <div class="hotkey-item"><kbd>Ctrl+Shift+L</kbd><span>Cycle Lyrics View Mode</span></div>
-        <div class="hotkey-item"><kbd>Ctrl+Shift+Space</kbd><span>Spotify Play / Pause</span></div>
-      </div>
-    </div>
-
-    <!-- Song History Modal Drawer -->
-    <div class="modal-overlay" id="historyModal" style="display: none;">
-      <div class="modal-card">
-        <div class="modal-header">
-          <span>Song History & Favorites</span>
-          <button class="modal-close" id="btnHistoryClose">✕</button>
-        </div>
-        <div class="modal-list" id="historyList"></div>
-      </div>
-    </div>
-
-    <!-- Vocabulary Deck Modal Drawer -->
-    <div class="modal-overlay" id="vocabModal" style="display: none;">
-      <div class="modal-card">
-        <div class="modal-header">
-          <span>Vocabulary Notebook</span>
-          <div class="modal-header-actions">
-            <button class="pill-btn-sm" id="btnExportVocab">Export CSV</button>
-            <button class="modal-close" id="btnVocabClose">✕</button>
+        <div class="stage-meta">
+          <span class="eyebrow">Now playing</span>
+          <h2 class="stage-title" id="stageTitle">No track</h2>
+          <p class="stage-artist" id="stageArtist">Open Spotify and play a song</p>
+          <p class="stage-album" id="stageAlbum"></p>
+          <div class="stage-tags">
+            <span class="badge" id="stageLang" hidden></span>
+            <span class="badge" id="stageProvider" hidden></span>
           </div>
-        </div>
-        <div class="modal-list" id="vocabList"></div>
-      </div>
-    </div>
-
-    <!-- Floating Glass Dictionary Popup (Word Lookup & Pronunciation) -->
-    <div class="dict-card" id="dictCard" style="display: none;">
-      <div class="dict-top">
-        <div class="dict-word-info">
-          <span class="dict-word" id="dictWord">Word</span>
-          <span class="dict-romaji" id="dictRomaji">Romaji</span>
-        </div>
-        <div class="dict-actions">
-          <button class="dict-btn" id="btnDictSpeak" title="Pronounce word with natural audio">🔊</button>
-          <button class="dict-btn" id="btnDictSave" title="Save to Vocabulary Notebook">⭐</button>
-          <button class="dict-btn" id="btnDictCopy" title="Copy word & definition">📋</button>
-          <button class="dict-close" id="btnDictClose">✕</button>
-        </div>
-      </div>
-      <div class="dict-meaning" id="dictMeaning">Translation loading...</div>
-      <div class="dict-meta">
-        <span class="dict-lang" id="dictLang">Detected Language</span>
-        <span class="dict-hint">Right-click line to copy • Double-click word to define</span>
-      </div>
-    </div>
-
-    <!-- Normal / Fullscreen Content Container -->
-    <div class="main-body" id="mainBody">
-      
-      <!-- Track Header Card (Supports Mouse Wheel Volume) -->
-      <section class="track-card pywebview-drag-region" id="trackCard">
-        <div class="track-artwork-wrap">
-          <img class="track-artwork" id="trackArtwork" style="display: none;" alt="Album Cover" />
-          <div class="track-disc" id="trackDisc">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z"/></svg>
-          </div>
-        </div>
-
-        <div class="track-details">
-          <div class="track-title-row">
-            <div class="track-title" id="trackTitle">Connecting to Spotify...</div>
-            <button class="heart-btn no-drag tooltip" id="btnHeart" data-tip="Favorite song">♡</button>
-          </div>
-          <div class="track-artist" id="trackArtist">Play a song to begin sync</div>
-        </div>
-
-        <div class="sound-wave" id="soundWave">
-          <span class="wave-bar b1"></span>
-          <span class="wave-bar b2"></span>
-          <span class="wave-bar b3"></span>
-          <span class="wave-bar b4"></span>
         </div>
       </section>
 
-      <!-- Lyrics Scrolling Viewport -->
-      <main class="lyrics-viewport" id="lyricsViewport">
-        <!-- Instrumental Solo Countdown Pill -->
-        <div class="instrumental-pill" id="instrumentalPill" style="display: none;">
-          <span class="note-anim">♪</span>
-          <span id="instrumentalText">Instrumental Solo (0:12)</span>
+      <section class="lyrics-pane" id="lyricsPane">
+        <div class="preview-banner" id="previewBanner" role="status" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#icon-history"></use></svg>
+          <span class="preview-label" id="previewLabel">Preview</span>
+          <button class="text-btn" id="btnBackToLive" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-arrow-left"></use></svg> Back to live</button>
         </div>
 
-        <!-- Idle State -->
-        <div class="empty-state" id="idleState">
-          <div class="radar-halo">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-            </svg>
-          </div>
-          <h3>Spotify Companion Ready</h3>
-          <p>Play any song in Spotify. Synced karaoke lyrics, phonetic romanization, and real-time translations appear here automatically.</p>
+        <div class="instrumental-pill" id="instrumentalPill" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#icon-music"></use></svg>
+          <span id="instrumentalText">Instrumental</span>
         </div>
 
-        <!-- Lyrics List -->
-        <div class="lyrics-list" id="lyricsList" style="display: none;"></div>
-
-        <!-- No Lyrics State -->
-        <div class="empty-state" id="noLyricsState" style="display: none;">
-          <p>No timestamped lyrics found for this song.</p>
-          <button class="pill-btn secondary" id="btnRetry">Search Again</button>
-        </div>
-      </main>
-
-      <!-- Bottom Player & Scrubber Bar -->
-      <footer class="player-dock" id="playerDock">
-        <!-- Progress Bar -->
-        <div class="scrub-container no-drag">
-          <span class="time-stamp" id="currentTime">0:00</span>
-          <div class="scrub-track" id="scrubTrack">
-            <div class="scrub-fill" id="scrubFill"></div>
-            <div class="scrub-handle" id="scrubHandle"></div>
-          </div>
-          <span class="time-stamp" id="totalTime">0:00</span>
-        </div>
-
-        <!-- Media Controls & Audio Spectrum -->
-        <div class="dock-lower no-drag">
-          <!-- Fluid Canvas Spectrum Visualizer -->
-          <canvas class="audio-spectrum" id="audioSpectrum" width="160" height="26"></canvas>
-
-          <div class="media-controls">
-            <button class="ctrl-btn" id="btnPrev" title="Previous Track">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
-            </button>
-            <button class="ctrl-btn play-btn" id="btnPlayPause" title="Play / Pause">
-              <svg class="icon-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              <svg class="icon-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-            </button>
-            <button class="ctrl-btn" id="btnNext" title="Next Track">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-            </button>
+        <div class="lyrics-scroll" id="lyricsViewport">
+          <div class="empty-state" id="idleState">
+            <span class="empty-icon" aria-hidden="true"><svg class="icon"><use href="#icon-music"></use></svg></span>
+            <h2>Ready when you are</h2>
+            <p>Play a song in Spotify. Synced lyrics, romanization and translations will appear here automatically.</p>
+            <div class="empty-hint"><kbd>Ctrl</kbd><kbd>K</kbd><span>for commands</span></div>
           </div>
 
-          <div class="vol-indicator" id="volIndicator" title="Mouse wheel over artwork to adjust volume">
-            <span>🔊</span>
+          <div class="skeleton" id="skeletonState" aria-hidden="true" hidden>
+            <div class="sk-line w-72"></div>
+            <div class="sk-line w-52 sk-small"></div>
+            <div class="sk-space"></div>
+            <div class="sk-line w-88"></div>
+            <div class="sk-line w-64 sk-small"></div>
+            <div class="sk-space"></div>
+            <div class="sk-line w-80"></div>
+            <div class="sk-line w-44 sk-small"></div>
+            <div class="sk-space"></div>
+            <div class="sk-line w-68"></div>
+            <div class="sk-line w-56 sk-small"></div>
+          </div>
+
+          <div class="lyrics-list" id="lyricsList" role="list" hidden></div>
+
+          <div class="empty-state error-state" id="noLyricsState" role="alert" hidden>
+            <span class="empty-icon" id="errorIcon" aria-hidden="true"><svg class="icon"><use href="#icon-search"></use></svg></span>
+            <h2 id="errorTitle">No lyrics found</h2>
+            <p id="errorMessage">This track has no lyrics in the library yet.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" id="btnRetry" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"></use></svg> Retry</button>
+              <button class="btn" id="btnSearchLyrics" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg> Search lyrics</button>
+            </div>
           </div>
         </div>
+      </section>
+    </main>
+
+    <footer class="player-dock" id="playerDock">
+      <div class="dock-progress">
+        <span class="time-stamp" id="currentTime">0:00</span>
+        <div class="scrub-track" id="scrubTrack" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+          <span class="scrub-fill" id="scrubFill"></span>
+          <span class="scrub-handle" id="scrubHandle"></span>
+        </div>
+        <span class="time-stamp" id="totalTime">0:00</span>
+      </div>
+      <div class="dock-main">
+        <div class="dock-left">
+          <span class="playing-indicator" id="playingIndicator" aria-hidden="true"><span></span><span></span><span></span></span>
+          <button class="dock-chip" id="btnOffsetChip" type="button" data-tooltip="Lyric offset for this song" aria-label="Lyric offset for this song">
+            <span>Offset</span><span class="dock-offset" id="dockOffset">0.0s</span>
+          </button>
+        </div>
+        <div class="dock-controls">
+          <button class="icon-btn transport" id="btnPrev" type="button" aria-label="Previous track" data-tooltip="Previous">
+            <svg class="icon"><use href="#icon-prev"></use></svg>
+          </button>
+          <button class="play-btn" id="btnPlayPause" type="button" aria-label="Play" data-tooltip="Play or pause">
+            <svg class="icon"><use id="playUse" href="#icon-play"></use></svg>
+          </button>
+          <button class="icon-btn transport" id="btnNext" type="button" aria-label="Next track" data-tooltip="Next">
+            <svg class="icon"><use href="#icon-next"></use></svg>
+          </button>
+        </div>
+        <div class="dock-right">
+          <button class="icon-btn" id="btnVolume" type="button" aria-label="Volume help" data-tooltip="Scroll the album art to change Windows volume">
+            <svg class="icon"><use href="#icon-volume"></use></svg>
+          </button>
+          <button class="dock-chip view-chip" id="btnViewMode" type="button" data-tooltip="Lyrics view: Dual, translation or original" aria-label="Cycle lyrics view mode">
+            <span id="viewModeText">DUAL</span>
+          </button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <div class="mini-bar pywebview-drag-region" id="miniBar" hidden>
+    <div class="mini-main-row">
+      <div class="mini-art-wrap no-drag" id="miniArtWrap" title="Scroll to change Windows volume">
+        <img class="mini-art" id="miniArtwork" alt="" hidden>
+        <span class="mini-art-fallback" id="miniDisc" aria-hidden="true"><svg class="icon"><use href="#icon-disc"></use></svg></span>
+      </div>
+      <div class="mini-center">
+        <div class="mini-line" id="miniOriginal">Connecting…</div>
+        <div class="mini-romaji" id="miniRomaji"></div>
+        <div class="mini-translation" id="miniTranslation"></div>
+        <div class="mini-progress" aria-hidden="true"><span id="miniProgressFill"></span></div>
+      </div>
+      <div class="mini-actions no-drag">
+        <button class="mini-btn" id="btnMiniPlay" type="button" aria-label="Play" data-tooltip="Play or pause">
+          <svg class="icon"><use id="miniPlayUse" href="#icon-play"></use></svg>
+        </button>
+        <button class="mini-btn" id="btnMiniNext" type="button" aria-label="Next track" data-tooltip="Next">
+          <svg class="icon"><use href="#icon-next"></use></svg>
+        </button>
+        <button class="mini-btn" id="btnMiniLyrics" type="button" aria-label="Show lyrics" aria-pressed="false" data-tooltip="Show lyrics">
+          <svg class="icon"><use id="miniLyricsUse" href="#icon-chevron-up"></use></svg>
+        </button>
+        <button class="mini-btn" id="btnMiniOpen" type="button" aria-label="Open full window" data-tooltip="Open full window">
+          <svg class="icon"><use href="#icon-expand"></use></svg>
+        </button>
+        <button class="mini-btn hover-action" id="btnMiniPin" type="button" aria-label="Always on top" aria-pressed="false" data-tooltip="Always on top">
+          <svg class="icon"><use href="#icon-pin"></use></svg>
+        </button>
+        <button class="mini-btn hover-action close-btn" id="btnMiniClose" type="button" aria-label="Close window" data-tooltip="Close">
+          <svg class="icon"><use href="#icon-close"></use></svg>
+        </button>
+      </div>
+    </div>
+    <div class="mini-drawer" id="miniDrawer" hidden>
+      <div class="mini-lyrics-scroll" id="miniLyricsScroll"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="settingsOverlay" hidden>
+    <aside class="sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" tabindex="-1">
+      <header class="sheet-head">
+        <div>
+          <span class="eyebrow">Preferences</span>
+          <h2 id="settingsTitle">Settings</h2>
+        </div>
+        <button class="icon-btn" id="btnSettingsClose" type="button" aria-label="Close settings" data-tooltip="Close">
+          <svg class="icon"><use href="#icon-close"></use></svg>
+        </button>
+      </header>
+      <nav class="sheet-tabs" role="tablist" aria-label="Settings sections">
+        <button class="sheet-tab is-active" id="tab-appearance" type="button" role="tab" aria-selected="true" aria-controls="panel-appearance" data-tab="appearance">Appearance</button>
+        <button class="sheet-tab" id="tab-lyrics" type="button" role="tab" aria-selected="false" aria-controls="panel-lyrics" data-tab="lyrics" tabindex="-1">Lyrics</button>
+        <button class="sheet-tab" id="tab-translation" type="button" role="tab" aria-selected="false" aria-controls="panel-translation" data-tab="translation" tabindex="-1">Translation</button>
+        <button class="sheet-tab" id="tab-playback" type="button" role="tab" aria-selected="false" aria-controls="panel-playback" data-tab="playback" tabindex="-1">Playback</button>
+        <button class="sheet-tab" id="tab-shortcuts" type="button" role="tab" aria-selected="false" aria-controls="panel-shortcuts" data-tab="shortcuts" tabindex="-1">Shortcuts</button>
+        <button class="sheet-tab" id="tab-data" type="button" role="tab" aria-selected="false" aria-controls="panel-data" data-tab="data" tabindex="-1">Data</button>
+        <button class="sheet-tab" id="tab-about" type="button" role="tab" aria-selected="false" aria-controls="panel-about" data-tab="about" tabindex="-1">About</button>
+      </nav>
+      <div class="sheet-body">
+        <section class="sheet-panel" id="panel-appearance" role="tabpanel" aria-labelledby="tab-appearance">
+          <div class="setting-block">
+            <span class="setting-label">Theme</span>
+            <div class="segmented" id="themeGroup" role="group" aria-label="Theme">
+              <button type="button" data-theme-choice="system"><svg class="icon" aria-hidden="true"><use href="#icon-monitor"></use></svg> System</button>
+              <button type="button" data-theme-choice="dark"><svg class="icon" aria-hidden="true"><use href="#icon-moon"></use></svg> Dark</button>
+              <button type="button" data-theme-choice="light"><svg class="icon" aria-hidden="true"><use href="#icon-sun"></use></svg> Light</button>
+              <button type="button" data-theme-choice="oled">OLED</button>
+            </div>
+            <p class="setting-help">The album art sets a dynamic accent and a still, blurred backdrop.</p>
+          </div>
+          <div class="setting-row">
+            <div><span class="setting-label">Font size</span><span class="setting-help">Scale lyrics and interface text.</span></div>
+            <output class="setting-value" id="fontScaleVal">100%</output>
+          </div>
+          <input class="slider" id="sliderFontScale" type="range" min="85" max="130" step="5" value="100" aria-label="Font scale">
+          <div class="setting-row">
+            <div><span class="setting-label">Low power</span><span class="setting-help">Disables animation, the backdrop and the smooth playback loop.</span></div>
+            <button class="switch" id="checkLowPower" type="button" role="switch" data-tooltip="Low power mode" aria-checked="false" aria-label="Low power mode"><span class="switch-thumb"></span></button>
+          </div>
+        </section>
+
+        <section class="sheet-panel" id="panel-lyrics" role="tabpanel" aria-labelledby="tab-lyrics" hidden>
+          <div class="setting-block">
+            <span class="setting-label">Lyrics view</span>
+            <div class="segmented" id="viewModeGroup" role="group" aria-label="Lyrics view">
+              <button type="button" data-lyrics-mode="both">Dual</button>
+              <button type="button" data-lyrics-mode="trans-only">Translation</button>
+              <button type="button" data-lyrics-mode="orig-only">Original</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div><span class="setting-label">Romanization</span><span class="setting-help" id="romajiSettingsLabel">Phonetics (Romanization)</span></div>
+            <button class="switch" id="checkRomaji" type="button" role="switch" data-tooltip="Romanization" aria-checked="true" aria-label="Romanization"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="setting-row">
+            <div><span class="setting-label">Karaoke sweep</span><span class="setting-help">Ink the active line as it is sung.</span></div>
+            <button class="switch" id="checkSweep" type="button" role="switch" data-tooltip="Karaoke sweep" aria-checked="true" aria-label="Karaoke sweep"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="setting-row">
+            <div><span class="setting-label">Word lookup</span><span class="setting-help">Double-click any word to translate it.</span></div>
+            <button class="switch" id="checkLearner" type="button" role="switch" data-tooltip="Word lookup" aria-checked="true" aria-label="Word lookup"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="setting-block offset-block">
+            <span class="setting-label">Sync offset</span>
+            <p class="setting-help">Saved per song. Positive values delay the lyrics.</p>
+            <div class="nudge-row">
+              <button class="nudge-btn" id="btnNudgeMinus" type="button" aria-label="Offset back 0.2 seconds">−0.2s</button>
+              <output class="nudge-val" id="nudgeOffsetVal">0.0s</output>
+              <button class="nudge-btn" id="btnNudgePlus" type="button" aria-label="Offset forward 0.2 seconds">+0.2s</button>
+              <button class="nudge-btn reset" id="btnNudgeReset" type="button">Reset</button>
+            </div>
+            <p class="setting-help" id="offsetSongLabel">No song selected.</p>
+          </div>
+        </section>
+
+        <section class="sheet-panel" id="panel-translation" role="tabpanel" aria-labelledby="tab-translation" hidden>
+          <div class="setting-block">
+            <span class="setting-label">Translate into</span>
+            <div class="select" id="langSelect" data-value="en"></div>
+            <p class="setting-help">Changing the language reloads the current lyrics and translations.</p>
+          </div>
+          <div class="setting-block">
+            <span class="setting-label">Providers</span>
+            <p class="setting-help">Lyrics come from local LRC files, LRCLIB or NetEase. Translation and phonetics run in the background, then stream into the view.</p>
+          </div>
+        </section>
+
+        <section class="sheet-panel" id="panel-playback" role="tabpanel" aria-labelledby="tab-playback" hidden>
+          <div class="setting-row">
+            <div><span class="setting-label">Discord presence</span><span class="setting-help">Share the current song on Discord.</span></div>
+            <button class="switch" id="checkDiscord" type="button" role="switch" data-tooltip="Discord presence" aria-checked="true" aria-label="Discord presence"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="setting-row">
+            <div><span class="setting-label">Always on top</span><span class="setting-help">Keep the window above other apps.</span></div>
+            <button class="switch" id="checkPin" type="button" role="switch" data-tooltip="Always on top" aria-checked="false" aria-label="Always on top"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="setting-row">
+            <div><span class="setting-label">Ghost mode</span><span class="setting-help">Click-through overlay for games. Toggle with Ctrl+Shift+G.</span></div>
+            <button class="switch" id="checkGhost" type="button" role="switch" data-tooltip="Ghost mode" aria-checked="false" aria-label="Ghost mode"><span class="switch-thumb"></span></button>
+          </div>
+          <div class="setting-block">
+            <span class="setting-label">Sleep timer</span>
+            <div class="select" id="sleepSelect" data-value="0"></div>
+            <p class="setting-help">Pauses Spotify when the timer ends. Cancel from the timer badge or the toast.</p>
+          </div>
+          <div class="setting-row">
+            <div><span class="setting-label">Start with Windows</span><span class="setting-help" id="startupHelp">Launch the companion at sign-in.</span></div>
+            <button class="switch" id="checkStartup" type="button" role="switch" data-tooltip="Start with Windows" aria-checked="false" aria-label="Start with Windows"><span class="switch-thumb"></span></button>
+          </div>
+        </section>
+
+        <section class="sheet-panel" id="panel-shortcuts" role="tabpanel" aria-labelledby="tab-shortcuts" hidden>
+          <div class="setting-block">
+            <span class="setting-label">Global shortcuts</span>
+            <p class="setting-help">These work anywhere in Windows.</p>
+            <div class="shortcut-list">
+              <div class="shortcut-row"><span>Ghost mode</span><kbd>Ctrl+Shift+G</kbd></div>
+              <div class="shortcut-row"><span>Mini mode</span><kbd>Ctrl+Shift+M</kbd></div>
+              <div class="shortcut-row"><span>Boss key (hide/show)</span><kbd>Ctrl+Shift+H</kbd></div>
+              <div class="shortcut-row"><span>Cycle lyrics view</span><kbd>Ctrl+Shift+L</kbd></div>
+              <div class="shortcut-row"><span>Spotify play/pause</span><kbd>Ctrl+Shift+Space</kbd></div>
+            </div>
+          </div>
+          <div class="setting-block">
+            <span class="setting-label">In the app</span>
+            <div class="shortcut-list">
+              <div class="shortcut-row"><span>Command palette</span><kbd>Ctrl+K</kbd></div>
+              <div class="shortcut-row"><span>Fullscreen</span><kbd>F11</kbd></div>
+              <div class="shortcut-row"><span>Close panel or exit fullscreen</span><kbd>Esc</kbd></div>
+              <div class="shortcut-row"><span>Seek to line</span><span class="shortcut-text">Click a lyric</span></div>
+              <div class="shortcut-row"><span>Copy or edit line</span><span class="shortcut-text">Right-click a lyric</span></div>
+              <div class="shortcut-row"><span>Word lookup</span><span class="shortcut-text">Double-click a word</span></div>
+              <div class="shortcut-row"><span>System volume</span><span class="shortcut-text">Scroll over album art</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="sheet-panel" id="panel-data" role="tabpanel" aria-labelledby="tab-data" hidden>
+          <div class="setting-block">
+            <span class="setting-label">Cache</span>
+            <dl class="cache-stats" id="cacheStats">
+              <div><dt>Status</dt><dd>Loading…</dd></div>
+            </dl>
+            <div class="button-row">
+              <button class="btn btn-sm" id="btnRefreshCache" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"></use></svg> Refresh</button>
+              <button class="btn btn-sm btn-danger" id="btnClearCache" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg> Clear cache</button>
+            </div>
+          </div>
+          <div class="setting-block">
+            <span class="setting-label">Local lyrics</span>
+            <p class="setting-help path-text" id="lrcFolderPath">Checking folder…</p>
+            <div class="button-row">
+              <button class="btn btn-sm" id="btnOpenLrcFolder" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-folder-open"></use></svg> Open folder</button>
+              <button class="btn btn-sm" id="btnSettingsSearchLyrics" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg> Search lyrics</button>
+            </div>
+          </div>
+          <div class="setting-block">
+            <span class="setting-label">Library</span>
+            <div class="button-row">
+              <button class="btn btn-sm" id="btnSettingsHistory" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-history"></use></svg> History</button>
+              <button class="btn btn-sm" id="btnSettingsVocab" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-book"></use></svg> Vocabulary</button>
+            </div>
+          </div>
+          <div class="setting-block">
+            <span class="setting-label">Export</span>
+            <div class="button-row wrap">
+              <button class="btn btn-sm" id="btnExportLrc" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-file-text"></use></svg> LRC</button>
+              <button class="btn btn-sm" id="btnExportSrt" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-captions"></use></svg> SRT</button>
+              <button class="btn btn-sm" id="btnExportSheet" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-printer"></use></svg> Poster</button>
+              <button class="btn btn-sm" id="btnCopyLine" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-copy"></use></svg> Copy line</button>
+              <button class="btn btn-sm" id="btnCopyAll" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-copy"></use></svg> Copy all</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="sheet-panel" id="panel-about" role="tabpanel" aria-labelledby="tab-about" hidden>
+          <div class="about-head">
+            <span class="brand-mark large" aria-hidden="true"><svg class="icon"><use href="#icon-music"></use></svg></span>
+            <div><h3>Spotify Realtime Lyrics</h3><p>Version 3.0</p></div>
+          </div>
+          <p class="about-copy">A lyrics-first companion for Spotify on Windows. Synced lines, romanization, translations, a vocabulary notebook and exports stay in one quiet window.</p>
+          <dl class="about-list">
+            <div><dt>Lyrics</dt><dd>Local LRC, LRCLIB, NetEase</dd></div>
+            <div><dt>Translation</dt><dd>Google Translate</dd></div>
+            <div><dt>Interface</dt><dd>Vanilla HTML, CSS and JavaScript</dd></div>
+          </dl>
+        </section>
+      </div>
+    </aside>
+  </div>
+
+  <div class="overlay" id="historyModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle" tabindex="-1">
+      <header class="modal-head">
+        <div><span class="eyebrow">Library</span><h2 id="historyTitle">Song history</h2></div>
+        <button class="icon-btn" id="btnHistoryClose" type="button" aria-label="Close history" data-tooltip="Close"><svg class="icon"><use href="#icon-close"></use></svg></button>
+      </header>
+      <div class="modal-toolbar">
+        <label class="search-field"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg><input id="historySearch" type="search" placeholder="Search history" aria-label="Search song history"></label>
+      </div>
+      <div class="modal-body" id="historyList"></div>
+      <footer class="modal-foot">Choose a song to preview its lyrics. Playback stays on the live track.</footer>
+    </div>
+  </div>
+
+  <div class="overlay" id="vocabModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="vocabTitle" tabindex="-1">
+      <header class="modal-head">
+        <div><span class="eyebrow">Study</span><h2 id="vocabTitle">Vocabulary</h2></div>
+        <div class="modal-head-actions">
+          <button class="icon-btn" id="btnExportVocab" type="button" aria-label="Export vocabulary as CSV" data-tooltip="Export CSV"><svg class="icon"><use href="#icon-download"></use></svg></button>
+          <button class="icon-btn" id="btnVocabClose" type="button" aria-label="Close vocabulary" data-tooltip="Close"><svg class="icon"><use href="#icon-close"></use></svg></button>
+        </div>
+      </header>
+      <div class="modal-toolbar">
+        <label class="search-field"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg><input id="vocabSearch" type="search" placeholder="Search words" aria-label="Search vocabulary"></label>
+      </div>
+      <div class="modal-body" id="vocabList"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="searchModal" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="searchTitle" tabindex="-1">
+      <header class="modal-head">
+        <div><span class="eyebrow">Library</span><h2 id="searchTitle">Search lyrics</h2></div>
+        <button class="icon-btn" id="btnSearchClose" type="button" aria-label="Close search" data-tooltip="Close"><svg class="icon"><use href="#icon-close"></use></svg></button>
+      </header>
+      <form class="search-form" id="searchLyricsForm">
+        <label><span>Artist</span><input class="text-input" id="searchArtist" type="text" autocomplete="off"></label>
+        <label><span>Title</span><input class="text-input" id="searchTitleInput" type="text" autocomplete="off"></label>
+        <label class="duration-field"><span>Duration (s)</span><input class="text-input" id="searchDuration" type="number" min="0" step="1"></label>
+        <button class="btn btn-primary" id="btnSearchSubmit" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg> Search</button>
+      </form>
+      <div class="modal-body" id="searchResults"></div>
+      <footer class="modal-foot search-foot">
+        <span class="path-text" id="searchFolderPath">Local LRC folder</span>
+        <button class="text-btn" id="btnSearchOpenFolder" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-folder-open"></use></svg> Open LRC folder</button>
       </footer>
     </div>
-
-    <!-- Mode 2: Floating Dynamic Island Pill (Compact / Expandable Overlay) -->
-    <div class="floating-island pywebview-drag-region" id="floatingIsland" style="display: none;">
-      
-      <div class="island-top-row">
-        <div class="island-left">
-          <img class="island-artwork" id="islandArtwork" style="display: none;" alt="Cover" />
-          <div class="island-disc" id="islandDisc">
-            <span class="island-dot"></span>
-          </div>
-        </div>
-        
-        <div class="island-center">
-          <div class="island-single-line" id="islandSingleLine">
-            <div class="island-original" id="islandOriginal">Connecting...</div>
-            <div class="island-romaji" id="islandRomaji"></div>
-            <div class="island-translation" id="islandTranslation"></div>
-          </div>
-          <div class="island-header-info" id="islandHeaderInfo" style="display: none;">
-            <span class="island-song-title" id="islandSongTitle">Title</span>
-            <span class="island-song-artist" id="islandSongArtist">Artist</span>
-          </div>
-        </div>
-
-        <div class="island-right no-drag">
-          <button class="island-btn" id="btnIslandPlay" title="Play/Pause">
-            <svg class="island-icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            <svg class="island-icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-          </button>
-          <button class="island-btn" id="btnIslandNext" title="Next Track">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-          </button>
-          <button class="island-btn" id="btnIslandFold" title="Toggle Multi-line Lyrics">
-            <svg class="icon-unfold" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-            <svg class="icon-fold" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;"><polyline points="18 15 12 9 6 15"/></svg>
-          </button>
-          <button class="island-btn" id="btnIslandExpand" title="Expand to Full Window">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Expandable Multi-Line Lyrics Drawer in Floating Island Mode -->
-      <div class="island-drawer" id="islandDrawer" style="display: none;">
-        <div class="island-lyrics-scroll" id="islandLyricsScroll"></div>
-      </div>
-
-    </div>
-
   </div>
+
+  <div class="overlay palette-overlay" id="commandPalette" hidden>
+    <div class="palette" role="dialog" aria-modal="true" aria-labelledby="paletteLabel">
+      <div class="palette-input-row">
+        <svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg>
+        <input id="paletteInput" type="text" role="combobox" aria-expanded="true" aria-controls="paletteList" aria-autocomplete="list" placeholder="Search commands, songs and words" aria-label="Command palette">
+        <kbd>Esc</kbd>
+      </div>
+      <div class="palette-list" id="paletteList" role="listbox" aria-labelledby="paletteLabel"></div>
+      <div class="palette-foot"><span id="paletteLabel">Commands and library</span><span>↑↓ navigate · Enter run</span></div>
+    </div>
+  </div>
+
+  <div class="context-menu" id="lineContextMenu" role="menu" hidden>
+    <button class="menu-item" id="ctxCopy" type="button" role="menuitem" data-icon="copy"><span>Copy line</span></button>
+    <button class="menu-item" id="ctxEdit" type="button" role="menuitem" data-icon="pencil"><span>Edit line</span></button>
+  </div>
+
+  <div class="dict-card" id="dictCard" role="dialog" aria-label="Word lookup" hidden>
+    <div class="dict-top">
+      <div class="dict-word-info">
+        <span class="dict-word" id="dictWord">Word</span>
+        <span class="dict-romaji" id="dictRomaji"></span>
+      </div>
+      <div class="dict-actions">
+        <button class="icon-btn small" id="btnDictSpeak" type="button" aria-label="Pronounce word" data-tooltip="Pronounce"><svg class="icon"><use href="#icon-volume"></use></svg></button>
+        <button class="icon-btn small" id="btnDictSave" type="button" aria-label="Save word" data-tooltip="Save to vocabulary"><svg class="icon"><use href="#icon-bookmark"></use></svg></button>
+        <button class="icon-btn small" id="btnDictCopy" type="button" aria-label="Copy definition" data-tooltip="Copy"><svg class="icon"><use href="#icon-copy"></use></svg></button>
+        <button class="icon-btn small" id="btnDictClose" type="button" aria-label="Close word lookup" data-tooltip="Close"><svg class="icon"><use href="#icon-close"></use></svg></button>
+      </div>
+    </div>
+    <p class="dict-meaning" id="dictMeaning">Translating…</p>
+    <div class="dict-meta"><span id="dictLang">Detecting language</span><span>Double-click a word to look it up</span></div>
+  </div>
+
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
 
   <script src="app.js"></script>
 </body>
