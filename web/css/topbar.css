@@ -39,6 +39,12 @@
   height: 16px;
 }
 
+.brand-logo-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
 .brand-mark.large {
   width: 44px;
   height: 44px;
@@ -48,6 +54,11 @@
 .brand-mark.large .icon {
   width: 22px;
   height: 22px;
+}
+
+.brand-mark.large .brand-logo-img {
+  width: 32px;
+  height: 32px;
 }
 
 .brand-name {

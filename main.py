@@ -24,10 +24,10 @@ from cache_service import get_cache
 from single_instance import SingleInstance
 from tray_icon import TrayIcon
 
-logger = logging.getLogger("SpotifyLyrics")
+logger = logging.getLogger("Lyriq")
 
-APP_TITLE = "Spotify Lyrics & Translation"
-TRAY_TOOLTIP = "Spotify Lyrics"
+APP_TITLE = "Lyriq"
+TRAY_TOOLTIP = "Lyriq"
 MINI_WIDTH = 560
 MINI_HEIGHT = 95
 
@@ -1255,6 +1255,11 @@ class SpotifyLyricsApp:
         if self.discord_rpc:
             self.discord_rpc.close()
 
+
+# Brand alias
+LyriqApp = SpotifyLyricsApp
+
+
 def _configure_logging():
     if logging.getLogger().handlers:
         return
@@ -1280,7 +1285,7 @@ def main(argv=None):
 
     instance = SingleInstance(window_title=APP_TITLE)
     if not instance.acquire():
-        logger.info("SpotifyLyrics is already running; exiting")
+        logger.info("Lyriq is already running; exiting")
         return 0
 
     app = SpotifyLyricsApp(start_minimized=start_minimized)
@@ -1288,7 +1293,7 @@ def main(argv=None):
     try:
         app.start()
     except Exception:
-        logger.exception("Fatal SpotifyLyrics startup error")
+        logger.exception("Fatal Lyriq startup error")
         return 1
     finally:
         try:

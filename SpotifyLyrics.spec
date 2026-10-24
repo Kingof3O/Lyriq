@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-datas = [('web', 'web'), ('icon.ico', '.')]
+datas = [('web', 'web'), ('icon.ico', '.'), ('Lyriq_Brand_Assets', 'Lyriq_Brand_Assets')]
 binaries = []
 hiddenimports = [
     'clr',
@@ -38,7 +38,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='SpotifyLyrics',
+    name='Lyriq',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

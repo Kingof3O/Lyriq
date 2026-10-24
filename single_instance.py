@@ -10,8 +10,8 @@ import time
 
 logger = logging.getLogger("SingleInstance")
 
-MUTEX_NAME = r"Local\SpotifyLyrics_v3"
-DEFAULT_WINDOW_TITLE = "Spotify Lyrics & Translation"
+MUTEX_NAME = r"Local\Lyriq_v3"
+DEFAULT_WINDOW_TITLE = "Lyriq"
 ERROR_ALREADY_EXISTS = 183
 SW_RESTORE = 9
 

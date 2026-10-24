@@ -141,7 +141,7 @@ class NOTIFYICONDATAW(ctypes.Structure):
 class TrayIcon:
     """Tray icon whose menu actions are reported through ``on_action``."""
 
-    def __init__(self, on_action, icon_path=None, tooltip="Spotify Lyrics"):
+    def __init__(self, on_action, icon_path=None, tooltip="Lyriq"):
         self.on_action = on_action
         self.icon_path = icon_path
         self.tooltip = tooltip
@@ -171,7 +171,7 @@ class TrayIcon:
 
         self._ready.clear()
         self._thread = threading.Thread(
-            target=self._run, name="SpotifyLyricsTray", daemon=True
+            target=self._run, name="LyriqTray", daemon=True
         )
         self._thread.start()
         if not self._ready.wait(3.0):
@@ -313,7 +313,7 @@ class TrayIcon:
         try:
             self._load_libraries()
             instance = self._kernel32.GetModuleHandleW(None)
-            class_name = f"SpotifyLyricsTray_{os.getpid()}_{id(self):x}"
+            class_name = f"LyriqTray_{os.getpid()}_{id(self):x}"
 
             self._wndproc = WNDPROC(self._wnd_proc)
             window_class = WNDCLASSW()
@@ -333,7 +333,7 @@ class TrayIcon:
             hwnd = self._user32.CreateWindowExW(
                 WS_EX_TOOLWINDOW,
                 class_name,
-                "Spotify Lyrics Tray",
+                "Lyriq Tray",
                 WS_POPUP,
                 0,
                 0,
