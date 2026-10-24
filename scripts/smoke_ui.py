@@ -46,6 +46,13 @@ SAMPLE_LINES = [
     {"time": 74.0, "text": "Can't touch this, yeah you know it", "translation": "", "romaji": ""},
 ]
 
+ARABIC_SAMPLE_LINES = [
+    {"time": 0.0, "text": "تملي معاك، ولو حتى بعيد عني", "translation": "Always with you, even if you are far from me", "romaji": ""},
+    {"time": 4.0, "text": "في قلبي هواك، بتمناك ومشتريك\nوعايش ليك سنين عمري", "translation": "Your love is in my heart, I desire only you\nAnd I live all the years of my life for you", "romaji": ""},
+    {"time": 9.0, "text": "تملي معاك، معاك قلبي معاك روحي يا أغلى حبيب", "translation": "Always with you, my heart is with you, my soul is with you, dearest beloved", "romaji": ""},
+    {"time": 14.0, "text": "ومهما تكون بعيد عني لقلبي قريب", "translation": "And no matter how far away you are, you remain close to my heart", "romaji": ""},
+]
+
 
 class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -66,6 +73,7 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
             <script>
             (function() {{
               var sampleLines = {json.dumps(SAMPLE_LINES)};
+              var arabicLines = {json.dumps(ARABIC_SAMPLE_LINES)};
               var scenario = "{scenario}";
 
               window.pywebview = {{
@@ -191,6 +199,31 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
                     var modal = document.getElementById('modalSearchLyrics');
                     if (modal) modal.classList.add('open');
                   }}
+                }} else if (scenario === 'arabic') {{
+                  window.updateTrack({{
+                    title: 'تملي معاك',
+                    artist: 'عمرو دياب',
+                    album: 'تملي معاك',
+                    duration: 269.0,
+                    status: 4,
+                    position_ms: 5000,
+                    is_playing: true,
+                    is_favorite: true
+                  }});
+                  window.updateLyrics({{
+                    title: 'تملي معاك',
+                    artist: 'عمرو دياب',
+                    is_synced: true,
+                    lang: 'ar',
+                    provider: 'LRCLIB',
+                    lines: arabicLines.map(function(l) {{ return {{ time: l.time, text: l.text }}; }})
+                  }});
+                  window.updateTranslations({{
+                    lang: 'ar',
+                    provider: 'LRCLIB',
+                    lines: arabicLines.map(function(l) {{ return {{ translation: l.translation, romaji: l.romaji }}; }})
+                  }});
+                  window.updatePosition(5.0, true);
                 }} else if (scenario === 'unsynced') {{
                   window.updateTrack({{
                     title: 'Danger (Acoustic)',
@@ -244,6 +277,7 @@ def run_smoke():
         ("settings", 480, 720, AUDIT_DIR / "06_settings.png"),
         ("search", 480, 720, AUDIT_DIR / "07_manual_search.png"),
         ("trans_only", 480, 720, AUDIT_DIR / "08_view_trans_only.png"),
+        ("arabic", 480, 720, AUDIT_DIR / "09_arabic_lyrics.png"),
     ]
 
     for name, w, h, out_path in scenarios:

@@ -275,6 +275,12 @@
 
   function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
 
+  var RTL_REGEX = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFC]/;
+  function isRtlText(value) {
+    if (!value || typeof value !== 'string') return false;
+    return RTL_REGEX.test(value);
+  }
+
   function formatTime(seconds) {
     var value = Number(seconds);
     if (!isFinite(value) || value < 0) return '0:00';
@@ -729,6 +735,7 @@
       if (prevEl) {
         prevEl.classList.remove('active');
         prevEl.style.removeProperty('--line-progress');
+        clearSublines(prevEl);
       }
       var prevMini = $('mini-line-' + previous);
       if (prevMini) prevMini.classList.remove('active');
@@ -740,6 +747,7 @@
       var activeEl = $('line-' + index);
       if (activeEl) {
         activeEl.classList.add('active');
+        setupActiveSublines(activeEl, index);
         if (allowScroll !== false && Date.now() > AppState.userScrollUntil && !AppState.isMini) {
           activeEl.scrollIntoView({
             behavior: prefersReducedMotion() || AppState.lowPower ? 'auto' : 'smooth',
@@ -771,6 +779,145 @@
     }
   }
 
+  function clearSublines(lineEl) {
+    if (!lineEl) return;
+    var targets = lineEl.querySelectorAll('.has-sublines');
+    Array.prototype.forEach.call(targets, function (target) {
+      target.classList.remove('has-sublines');
+      if (target._originalText !== undefined) {
+        target.textContent = target._originalText;
+        delete target._originalText;
+      }
+      delete target._sublines;
+    });
+  }
+
+  function getActiveLyricTarget(activeEl, line) {
+    if (!activeEl || !line) return null;
+    if (AppState.lyricViewMode === 'trans-only') {
+      if (line.translation && line.translation.trim()) {
+        return { el: activeEl.querySelector('.line-translation'), text: line.translation };
+      }
+      return { el: activeEl.querySelector('.line-original'), text: line.original };
+    }
+    return { el: activeEl.querySelector('.line-original'), text: line.original };
+  }
+
+  function measureVisualLines(targetEl, words) {
+    if (!words || words.length <= 1) return words ? [words.join(' ')] : [];
+    var fragment = document.createDocumentFragment();
+    var spans = [];
+    for (var w = 0; w < words.length; w++) {
+      var s = document.createElement('span');
+      s.textContent = (w > 0 ? ' ' : '') + words[w];
+      fragment.appendChild(s);
+      spans.push(s);
+    }
+    targetEl.replaceChildren(fragment);
+
+    var firstTop = spans[0].offsetTop;
+    var lastTop = spans[spans.length - 1].offsetTop;
+    if (Math.abs(lastTop - firstTop) < 6) {
+      return [words.join(' ')];
+    }
+
+    var lines = [];
+    var currentGroup = [];
+    var currentTop = firstTop;
+
+    for (var i = 0; i < spans.length; i++) {
+      var top = spans[i].offsetTop;
+      if (Math.abs(top - currentTop) > 6) {
+        if (currentGroup.length) lines.push(currentGroup.join('').trim());
+        currentGroup = [spans[i].textContent.trim()];
+        currentTop = top;
+      } else {
+        currentGroup.push(spans[i].textContent);
+      }
+    }
+    if (currentGroup.length) {
+      lines.push(currentGroup.join('').trim());
+    }
+    return lines;
+  }
+
+  function setupActiveSublines(activeEl, index) {
+    if (!activeEl) return;
+    clearSublines(activeEl);
+    if (!AppState.sweep) return;
+    if (editingState && editingState.index === index) return;
+
+    var line = AppState.lyrics[index];
+    var target = getActiveLyricTarget(activeEl, line);
+    if (!target || !target.el) return;
+
+    var targetEl = target.el;
+    var rawText = String(target.text || targetEl.textContent || '').trim();
+    if (!rawText) return;
+    targetEl._originalText = rawText;
+
+    var isRtl = isRtlText(rawText);
+    var explicitLines = rawText.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+    var visualLines = [];
+
+    if (explicitLines.length > 1) {
+      for (var e = 0; e < explicitLines.length; e++) {
+        var subWords = explicitLines[e].split(/\s+/).filter(Boolean);
+        if (subWords.length > 1) {
+          var wrapped = measureVisualLines(targetEl, subWords);
+          visualLines.push.apply(visualLines, wrapped);
+        } else if (subWords.length === 1) {
+          visualLines.push(subWords[0]);
+        }
+      }
+    } else {
+      var words = rawText.split(/\s+/).filter(Boolean);
+      if (words.length > 1) {
+        visualLines = measureVisualLines(targetEl, words);
+      }
+    }
+
+    if (visualLines.length > 1) {
+      var totalChars = 0;
+      var lengths = visualLines.map(function (str) {
+        var len = Math.max(1, str.length);
+        totalChars += len;
+        return len;
+      });
+
+      var sublines = [];
+      var accumulated = 0;
+      var fragment = document.createDocumentFragment();
+
+      for (var i = 0; i < visualLines.length; i++) {
+        var span = document.createElement('span');
+        span.className = 'lyric-subline';
+        if (isRtl) {
+          span.classList.add('is-rtl');
+          span.dir = 'rtl';
+        }
+        span.textContent = visualLines[i];
+        fragment.appendChild(span);
+
+        var startNorm = accumulated / totalChars;
+        accumulated += lengths[i];
+        var endNorm = accumulated / totalChars;
+
+        sublines.push({
+          el: span,
+          start: startNorm,
+          end: endNorm
+        });
+      }
+
+      targetEl.replaceChildren(fragment);
+      targetEl.classList.add('has-sublines');
+      targetEl._sublines = sublines;
+    } else {
+      targetEl.textContent = rawText;
+    }
+  }
+
   function updateSweep(index, adjustedSeconds) {
     if (!AppState.sweep || !AppState.isSynced || index < 0) return;
     var line = AppState.lyrics[index];
@@ -778,9 +925,28 @@
     var nextTime = index + 1 < AppState.lyrics.length ? AppState.lyrics[index + 1].time : line.time + 4;
     if (!(nextTime > line.time)) nextTime = line.time + 4;
     var duration = Math.max(0.6, nextTime - line.time);
-    var progress = clamp((adjustedSeconds - line.time) / duration, 0, 1) * 100;
+    var pNorm = clamp((adjustedSeconds - line.time) / duration, 0, 1);
     var node = $('line-' + index);
-    if (node) node.style.setProperty('--line-progress', progress.toFixed(2) + '%');
+    if (!node) return;
+
+    var targetWithSublines = node.querySelector('.has-sublines');
+    if (targetWithSublines && targetWithSublines._sublines && targetWithSublines._sublines.length > 1) {
+      var sublines = targetWithSublines._sublines;
+      for (var i = 0; i < sublines.length; i++) {
+        var sub = sublines[i];
+        var subProgress = 0;
+        if (pNorm <= sub.start) {
+          subProgress = 0;
+        } else if (pNorm >= sub.end) {
+          subProgress = 100;
+        } else {
+          subProgress = ((pNorm - sub.start) / (sub.end - sub.start)) * 100;
+        }
+        sub.el.style.setProperty('--line-progress', subProgress.toFixed(2) + '%');
+      }
+    } else {
+      node.style.setProperty('--line-progress', (pNorm * 100).toFixed(2) + '%');
+    }
   }
 
   function hideInstrumental() {
@@ -815,6 +981,7 @@
       if (node) {
         node.classList.remove('active');
         node.style.removeProperty('--line-progress');
+        clearSublines(node);
       }
       var miniNode = $('mini-line-' + previous);
       if (miniNode) miniNode.classList.remove('active');
@@ -1030,6 +1197,7 @@
 
   function renderLyricsList() {
     var fragment = document.createDocumentFragment();
+    var isTransOnly = AppState.lyricViewMode === 'trans-only';
     AppState.lyrics.forEach(function (line, index) {
       var lineEl = document.createElement('div');
       lineEl.className = 'lyric-line';
@@ -1040,10 +1208,19 @@
       lineEl.dataset.time = String(line.time);
       lineEl.setAttribute('role', 'listitem');
 
+      var origRtl = isRtlText(line.original);
+      var transRtl = isRtlText(line.translation);
+      var lineRtl = isTransOnly ? (transRtl || (!line.translation && origRtl)) : origRtl;
+      if (lineRtl) lineEl.classList.add('is-rtl');
+
       var original = document.createElement('div');
       original.className = 'line-original';
       original.id = 'orig-' + index;
       original.textContent = line.original;
+      if (origRtl) {
+        original.classList.add('is-rtl');
+        original.dir = 'rtl';
+      }
 
       var romaji = document.createElement('div');
       romaji.className = 'line-romaji';
@@ -1054,6 +1231,10 @@
       translation.className = 'line-translation';
       translation.id = 'trans-' + index;
       translation.textContent = line.translation;
+      if (transRtl) {
+        translation.classList.add('is-rtl');
+        translation.dir = 'rtl';
+      }
 
       lineEl.appendChild(original);
       lineEl.appendChild(romaji);
@@ -1074,10 +1255,14 @@
       var fallback = AppState.lyrics.length ? 'Instrumental' : (AppState.hasTrack ? 'Loading lyrics…' : 'Connecting…');
       el.miniOriginal.textContent = fallback;
       el.miniOriginal.title = fallback;
+      el.miniOriginal.classList.remove('is-rtl');
+      el.miniOriginal.dir = 'ltr';
       el.miniRomaji.textContent = '';
       el.miniRomaji.title = '';
       el.miniTranslation.textContent = '';
       el.miniTranslation.title = '';
+      el.miniTranslation.classList.remove('is-rtl');
+      el.miniTranslation.dir = 'ltr';
       el.miniBar.setAttribute('aria-label', 'Mini player');
       return;
     }
@@ -1085,29 +1270,45 @@
       var text = (line.translation && line.translation.trim()) || line.original || '—';
       el.miniOriginal.textContent = text;
       el.miniOriginal.title = text;
+      var textRtl = isRtlText(text);
+      el.miniOriginal.classList.toggle('is-rtl', textRtl);
+      el.miniOriginal.dir = textRtl ? 'rtl' : 'ltr';
       el.miniRomaji.textContent = '';
       el.miniRomaji.title = '';
       el.miniTranslation.textContent = '';
       el.miniTranslation.title = '';
+      el.miniTranslation.classList.remove('is-rtl');
+      el.miniTranslation.dir = 'ltr';
       el.miniBar.setAttribute('aria-label', text);
       return;
     }
     if (AppState.lyricViewMode === 'orig-only') {
       el.miniOriginal.textContent = line.original || '—';
       el.miniOriginal.title = line.original || '';
+      var origRtl = isRtlText(line.original);
+      el.miniOriginal.classList.toggle('is-rtl', origRtl);
+      el.miniOriginal.dir = origRtl ? 'rtl' : 'ltr';
       el.miniRomaji.textContent = line.romaji || '';
       el.miniRomaji.title = line.romaji || '';
       el.miniTranslation.textContent = '';
       el.miniTranslation.title = '';
+      el.miniTranslation.classList.remove('is-rtl');
+      el.miniTranslation.dir = 'ltr';
       el.miniBar.setAttribute('aria-label', line.original || '');
       return;
     }
     el.miniOriginal.textContent = line.original || '—';
     el.miniOriginal.title = line.original || '';
+    var origRtl2 = isRtlText(line.original);
+    el.miniOriginal.classList.toggle('is-rtl', origRtl2);
+    el.miniOriginal.dir = origRtl2 ? 'rtl' : 'ltr';
     el.miniRomaji.textContent = line.romaji || '';
     el.miniRomaji.title = line.romaji || '';
     el.miniTranslation.textContent = line.translation || '';
     el.miniTranslation.title = line.translation || '';
+    var transRtl = isRtlText(line.translation);
+    el.miniTranslation.classList.toggle('is-rtl', transRtl);
+    el.miniTranslation.dir = transRtl ? 'rtl' : 'ltr';
     el.miniBar.setAttribute('aria-label', (line.original || '') + ' — ' + (line.translation || ''));
   }
 
@@ -1121,6 +1322,7 @@
   function buildMiniLyrics() {
     if (!AppState.isMini || !AppState.isMiniExpanded) return;
     var fragment = document.createDocumentFragment();
+    var isTransOnly = AppState.lyricViewMode === 'trans-only';
     AppState.lyrics.forEach(function (line, index) {
       var item = document.createElement('div');
       item.className = 'mini-line-item';
@@ -1129,14 +1331,27 @@
       item.dataset.index = String(index);
       if (index === AppState.activeIndex) item.classList.add('active');
 
+      var origRtl = isRtlText(line.original);
+      var transRtl = isRtlText(line.translation);
+      var itemRtl = isTransOnly ? (transRtl || (!line.translation && origRtl)) : origRtl;
+      if (itemRtl) item.classList.add('is-rtl');
+
       var original = document.createElement('div');
       original.className = 'mini-orig';
       original.textContent = line.original;
+      if (origRtl) {
+        original.classList.add('is-rtl');
+        original.dir = 'rtl';
+      }
 
       var translation = document.createElement('div');
       translation.className = 'mini-trans';
       translation.id = 'mini-trans-' + index;
       translation.textContent = line.translation;
+      if (transRtl) {
+        translation.classList.add('is-rtl');
+        translation.dir = 'rtl';
+      }
 
       item.appendChild(original);
       item.appendChild(translation);
@@ -1334,27 +1549,49 @@
     if (!data || !Array.isArray(data.lines)) return;
     if (data.lang && data.lang !== 'unknown') setLanguage(data.lang);
 
+    var isTransOnly = AppState.lyricViewMode === 'trans-only';
     data.lines.forEach(function (item, index) {
       if (index >= AppState.lyrics.length) return;
       var tr = String(item.translation || '').trim();
       AppState.lyrics[index].translation = String(item.translation || '');
       AppState.lyrics[index].romaji = String(item.romaji || '');
+      var transRtl = isRtlText(tr);
+      var origRtl = isRtlText(AppState.lyrics[index].original);
+
       var lineEl = $('line-' + index);
-      if (lineEl) lineEl.classList.toggle('no-trans', !tr);
+      if (lineEl) {
+        lineEl.classList.toggle('no-trans', !tr);
+        var lineRtl = isTransOnly ? (transRtl || (!tr && origRtl)) : origRtl;
+        lineEl.classList.toggle('is-rtl', lineRtl);
+      }
       var transEl = $('trans-' + index);
-      if (transEl) transEl.textContent = AppState.lyrics[index].translation;
+      if (transEl) {
+        transEl.textContent = AppState.lyrics[index].translation;
+        transEl.classList.toggle('is-rtl', transRtl);
+        transEl.dir = transRtl ? 'rtl' : 'ltr';
+      }
       var romajiEl = $('romaji-' + index);
       if (romajiEl) romajiEl.textContent = AppState.lyrics[index].romaji;
       var miniTrans = $('mini-trans-' + index);
-      if (miniTrans) miniTrans.textContent = AppState.lyrics[index].translation;
+      if (miniTrans) {
+        miniTrans.textContent = AppState.lyrics[index].translation;
+        miniTrans.classList.toggle('is-rtl', transRtl);
+        miniTrans.dir = transRtl ? 'rtl' : 'ltr';
+      }
       var miniItem = $('mini-line-' + index);
-      if (miniItem) miniItem.classList.toggle('no-trans', !tr);
+      if (miniItem) {
+        miniItem.classList.toggle('no-trans', !tr);
+        var miniRtl = isTransOnly ? (transRtl || (!tr && origRtl)) : origRtl;
+        miniItem.classList.toggle('is-rtl', miniRtl);
+      }
     });
 
     showTranslationStatus(false);
 
     if (AppState.activeIndex >= 0) {
       updateMiniLine(AppState.activeIndex);
+      var activeNode = $('line-' + AppState.activeIndex);
+      if (activeNode) setupActiveSublines(activeNode, AppState.activeIndex);
     } else if (!AppState.isSynced) {
       var first = AppState.lyrics.find(function (line) { return line.original; });
       if (first && (first.translation || first.romaji)) setMiniFromLine(first);
@@ -2160,6 +2397,7 @@
     var lineEl = $('line-' + index);
     var originalEl = $('orig-' + index);
     if (!lineEl || !originalEl) return;
+    clearSublines(lineEl);
     var line = AppState.lyrics[index];
     if (!line) return;
 
@@ -2772,6 +3010,24 @@
     }
   }
 
+  function syncRtlClasses() {
+    var isTransOnly = AppState.lyricViewMode === 'trans-only';
+    AppState.lyrics.forEach(function (line, index) {
+      var lineEl = $('line-' + index);
+      var origRtl = isRtlText(line.original);
+      var transRtl = isRtlText(line.translation);
+      if (lineEl) {
+        var lineRtl = isTransOnly ? (transRtl || (!line.translation && origRtl)) : origRtl;
+        lineEl.classList.toggle('is-rtl', lineRtl);
+      }
+      var miniItem = $('mini-line-' + index);
+      if (miniItem) {
+        var miniRtl = isTransOnly ? (transRtl || (!line.translation && origRtl)) : origRtl;
+        miniItem.classList.toggle('is-rtl', miniRtl);
+      }
+    });
+  }
+
   function setLyricsViewMode(mode, options) {
     var opts = options || {};
     var next = LYRIC_VIEW_MODES.indexOf(mode) >= 0 ? mode : 'both';
@@ -2786,10 +3042,13 @@
     });
     if (AppState.activeIndex >= 0) {
       updateMiniLine(AppState.activeIndex);
+      var activeNode = $('line-' + AppState.activeIndex);
+      if (activeNode) setupActiveSublines(activeNode, AppState.activeIndex);
     } else if (!AppState.isSynced && AppState.lyrics.length) {
       var first = AppState.lyrics.find(function (line) { return line.original; });
       if (first) setMiniFromLine(first);
     }
+    syncRtlClasses();
     if (opts.persist !== false) persistSettings({ lyrics_view_mode: next });
     if (opts.announce) {
       showToast('View: ' + (next === 'both' ? 'Dual' : next === 'trans-only' ? 'Translation only' : 'Original only'), { icon: 'captions' });
@@ -2807,6 +3066,13 @@
     AppState.settings.karaoke_sweep_enabled = AppState.sweep;
     el.body.classList.toggle('enable-sweep', AppState.sweep);
     el.checkSweep.setAttribute('aria-checked', String(AppState.sweep));
+    if (AppState.activeIndex >= 0) {
+      var activeNode = $('line-' + AppState.activeIndex);
+      if (activeNode) {
+        if (AppState.sweep) setupActiveSublines(activeNode, AppState.activeIndex);
+        else clearSublines(activeNode);
+      }
+    }
     if (opts.persist !== false) persistSettings({ karaoke_sweep_enabled: AppState.sweep });
   }
 
@@ -3709,6 +3975,10 @@
     window.addEventListener('resize', function () {
       if (!el.dictCard.hidden) el.dictCard.hidden = true;
       closeLineContext();
+      if (AppState.activeIndex >= 0) {
+        var activeNode = $('line-' + AppState.activeIndex);
+        if (activeNode) setupActiveSublines(activeNode, AppState.activeIndex);
+      }
     });
 
     initMiniResize();
