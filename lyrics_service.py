@@ -275,6 +275,12 @@ class LyricsService:
             result["translation"] = translation
         return result
 
+    @staticmethod
+    def _drop_untimed_if_synced(lines: list) -> list:
+        """Drop stray untimed lines when the result contains real timestamps."""
+        timed = [line for line in lines if line.get("time", -1) >= 0]
+        return timed if timed else list(lines)
+
     def _format_provider_result(self, data: dict, artist: str, title: str) -> dict | None:
         lines = [
             line
@@ -283,6 +289,7 @@ class LyricsService:
         ]
         if not lines:
             return None
+        lines = self._drop_untimed_if_synced(lines)
 
         return {
             "id": data.get("id"),
@@ -290,7 +297,7 @@ class LyricsService:
             "title": data.get("title") or title,
             "artist": data.get("artist") or artist,
             "album": data.get("album") or "",
-            "is_synced": all(line.get("time", -1) >= 0 for line in lines),
+            "is_synced": bool(lines) and all(line.get("time", -1) >= 0 for line in lines),
             "lines": lines,
         }
 
@@ -302,6 +309,7 @@ class LyricsService:
             for line in (self._coerce_line(item) for item in result.get("lines") or [])
             if line is not None
         ]
+        lines = self._drop_untimed_if_synced(lines)
         result["lines"] = lines
         result["is_synced"] = bool(lines) and all(
             line.get("time", -1) >= 0 for line in lines
@@ -328,7 +336,9 @@ class LyricsService:
     def _format_lyrics(self, lyrics: dict, artist: str, title: str) -> dict:
         synced_text = lyrics.get("syncedLyrics") or ""
         plain_text = lyrics.get("plainLyrics") or ""
-        parsed = self.parse_lrc(synced_text or plain_text)
+        parsed = self._drop_untimed_if_synced(
+            self.parse_lrc(synced_text or plain_text)
+        )
 
         # Only a parsed timestamped LRC counts as synced.  Plain provider
         # lyrics are returned with time=-1 and must render statically.

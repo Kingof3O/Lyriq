@@ -77,6 +77,35 @@ class LyricsFormattingTestCase(unittest.TestCase):
         self.assertFalse(result["is_synced"])
         self.assertTrue(all(line["time"] == -1 for line in result["lines"]))
 
+    def test_format_lyrics_drops_leading_untimed_line(self):
+        provider = {
+            "id": 4,
+            "trackName": "Leading Intro",
+            "artistName": "Artist",
+            "syncedLyrics": "Intro note\n[00:05.00]First\n[00:09.00]Second",
+            "plainLyrics": None,
+        }
+        result = self.service._format_lyrics(provider, "Artist", "Leading Intro")
+
+        self.assertTrue(result["is_synced"])
+        self.assertEqual(
+            [line["text"] for line in result["lines"]], ["First", "Second"]
+        )
+
+    def test_normalize_cached_drops_leading_untimed_line(self):
+        normalized = self.service._normalize_cached({
+            "title": "Song",
+            "artist": "Artist",
+            "is_synced": False,
+            "lines": [
+                {"time": -1, "text": "Intro note"},
+                {"time": 5.0, "text": "First"},
+            ],
+        })
+
+        self.assertTrue(normalized["is_synced"])
+        self.assertEqual([line["text"] for line in normalized["lines"]], ["First"])
+
 
 class MarkedTranslationParserTestCase(unittest.TestCase):
     def test_exact_markers(self):
@@ -189,6 +218,119 @@ class TranslationFallbackTestCase(unittest.TestCase):
         self.assertEqual(
             self.cache.get_translations_batch(["never translated"], "en"), {}
         )
+
+    def test_fully_cached_song_derives_dominant_language(self):
+        self.cache.save_translations_batch(
+            {"안녕하세요": {"translation": "hello", "romaji": "annyeonghaseyo"}},
+            "en",
+        )
+
+        with mock.patch.object(self.service, "_translate_batch") as batch:
+            enriched, lang = self.service.translate_lines(
+                [{"time": 0.0, "text": "안녕하세요"}]
+            )
+
+        self.assertEqual(lang, "ko")
+        self.assertEqual(enriched[0]["translation"], "hello")
+        batch.assert_not_called()
+
+    def test_latin_cached_song_keeps_unknown_language(self):
+        self.cache.save_translations_batch(
+            {"hello there": {"translation": "hola", "romaji": ""}}, "en"
+        )
+
+        _, lang = self.service.translate_lines(
+            [{"time": 0.0, "text": "hello there"}]
+        )
+
+        self.assertEqual(lang, "unknown")
+
+    def test_cached_japanese_with_kanji_derives_ja(self):
+        self.cache.save_translations_batch(
+            {"君の名前": {"translation": "your name", "romaji": "kimi no namae"}},
+            "en",
+        )
+
+        _, lang = self.service.translate_lines(
+            [{"time": 0.0, "text": "君の名前"}]
+        )
+
+        self.assertEqual(lang, "ja")
+
+    def test_empty_fallback_is_not_cached_and_is_retried(self):
+        lines = [{"time": 0.0, "text": "retry me"}]
+
+        with mock.patch.object(
+            self.service,
+            "_translate_batch",
+            return_value=(["wrong", "extra"], ["shape", "extra"], "unknown"),
+        ), mock.patch.object(
+            self.service,
+            "_translate_single",
+            return_value=("", "", "unknown"),
+        ):
+            first, _ = self.service.translate_lines(lines)
+
+        self.assertEqual(first[0]["translation"], "")
+        self.assertEqual(
+            self.cache.get_translations_batch(["retry me"], "en"), {}
+        )
+
+        with mock.patch.object(
+            self.service,
+            "_translate_batch",
+            return_value=(["retry me now"], ["romaji"], "en"),
+        ):
+            second, _ = self.service.translate_lines(lines)
+
+        self.assertEqual(second[0]["translation"], "retry me now")
+        cached = self.cache.get_translations_batch(["retry me"], "en")
+        self.assertEqual(cached["retry me"]["translation"], "retry me now")
+
+    def test_stale_empty_cached_row_is_retried(self):
+        self.cache.save_translations_batch(
+            {"stale line": {"translation": "", "romaji": ""}}, "en"
+        )
+
+        with mock.patch.object(
+            self.service,
+            "_translate_batch",
+            return_value=(["fresh translation"], ["romaji"], "en"),
+        ) as batch:
+            enriched, _ = self.service.translate_lines(
+                [{"time": 0.0, "text": "stale line"}]
+            )
+
+        batch.assert_called_once_with(["stale line"])
+        self.assertEqual(enriched[0]["translation"], "fresh translation")
+        cached = self.cache.get_translations_batch(["stale line"], "en")
+        self.assertEqual(cached["stale line"]["translation"], "fresh translation")
+
+    def test_symbol_only_cached_row_is_not_retried(self):
+        self.cache.save_translations_batch(
+            {"♪♪": {"translation": "", "romaji": ""}}, "en"
+        )
+
+        with mock.patch.object(self.service, "_translate_batch") as batch:
+            enriched, _ = self.service.translate_lines(
+                [{"time": 0.0, "text": "♪♪"}]
+            )
+
+        batch.assert_not_called()
+        self.assertEqual(enriched[0]["translation"], "")
+
+    def test_individual_fallback_checks_abort_before_each_request(self):
+        with mock.patch.object(self.service, "_translate_single") as single:
+            translations, romanizations, lang = (
+                self.service._translate_lines_individually(
+                    ["alpha", "beta"], should_abort=lambda: True
+                )
+            )
+
+        single.assert_not_called()
+        self.assertEqual(translations, ["", ""])
+        self.assertEqual(romanizations, ["", ""])
+        self.assertEqual(lang, "unknown")
 
 
 class LyricsFetchCancellationTestCase(unittest.TestCase):

@@ -16,6 +16,7 @@ SINGLE_TIMEOUT = 4.5
 MAX_FALLBACK_WORKERS = 4
 
 _MARKER_RE = re.compile(r"\[\[\s*(\d+)\s*\]\]")
+_WORD_RE = re.compile(r"[^\W_]", re.UNICODE)
 
 
 class TranslatorService:
@@ -48,8 +49,17 @@ class TranslatorService:
         # Order-preserving dedupe: translation indices stay stable.
         unique_texts = list(dict.fromkeys([t for t in texts if t]))
 
-        # 1. Query local SQLite cache
-        cached_data = self.cache.get_translations_batch(unique_texts, self.target_lang)
+        # 1. Query local SQLite cache.  Empty translations are not trusted for
+        # real lines: a previous failed fallback must not poison future plays.
+        raw_cached = self.cache.get_translations_batch(unique_texts, self.target_lang)
+        cached_data = {}
+        for source in unique_texts:
+            row = raw_cached.get(source)
+            if not row:
+                continue
+            translation = (row.get("translation") or "").strip()
+            if translation or not self._is_translatable_line(source):
+                cached_data[source] = row
 
         # 2. Find missing texts that need online translation
         missing_texts = [t for t in unique_texts if t not in cached_data]
@@ -63,7 +73,9 @@ class TranslatorService:
                     return [], "unknown"
 
                 chunk = missing_texts[i:i + BATCH_SIZE]
-                tr_chunk, romaji_chunk, lang = self._translate_chunk(chunk)
+                tr_chunk, romaji_chunk, lang = self._translate_chunk(
+                    chunk, should_abort=should_abort
+                )
 
                 if lang != "unknown" and dominant_lang == "unknown":
                     dominant_lang = lang
@@ -74,10 +86,13 @@ class TranslatorService:
                     # If romanization from translate API is empty, use local Romanizer
                     if not rom:
                         rom = Romanizer.romanize(src)
-                    new_cached_entries[src] = {
-                        "translation": trans,
-                        "romaji": rom
-                    }
+                    # Never cache a completely empty result: it would look like
+                    # a successful translation forever and suppress retries.
+                    if trans or rom:
+                        new_cached_entries[src] = {
+                            "translation": trans,
+                            "romaji": rom
+                        }
 
             if aborted():
                 return [], "unknown"
@@ -89,6 +104,12 @@ class TranslatorService:
 
         # Merge cached and new
         all_data = {**cached_data, **new_cached_entries}
+
+        # A fully cached song never touches the network, so no API language is
+        # available.  Derive it from the lyrics themselves for badge/label
+        # updates on cached replays.
+        if dominant_lang == "unknown":
+            dominant_lang = self._detect_dominant_language(texts)
 
         enriched = []
         for item in lines:
@@ -118,7 +139,7 @@ class TranslatorService:
     # ------------------------------------------------------------------
     # Chunk translation / fallback handling
     # ------------------------------------------------------------------
-    def _translate_chunk(self, chunk: list) -> tuple:
+    def _translate_chunk(self, chunk: list, should_abort=None) -> tuple:
         """Translate one chunk, falling back per line if the batch is invalid."""
         try:
             tr_chunk, romaji_chunk, lang = self._translate_batch(chunk)
@@ -130,7 +151,36 @@ class TranslatorService:
             return list(tr_chunk), list(romaji_chunk), lang
 
         logger.debug("Translation batch misaligned; retrying line by line.")
-        return self._translate_lines_individually(chunk)
+        return self._translate_lines_individually(chunk, should_abort=should_abort)
+
+    @staticmethod
+    def _is_translatable_line(text: str) -> bool:
+        """True for real lyric text (not symbols/instrumental markers)."""
+        stripped = (text or "").strip()
+        return bool(stripped) and bool(_WORD_RE.search(stripped))
+
+    @staticmethod
+    def _detect_dominant_language(texts: list) -> str:
+        """Count script characters and return ko/ja/zh only when dominant."""
+        counts = {"ko": 0, "ja": 0, "zh": 0}
+        for text in texts:
+            for char in text or "":
+                script = Romanizer.detect_script(char)
+                if script in counts:
+                    counts[script] += 1
+
+        total = sum(counts.values())
+        if total == 0:
+            return "unknown"
+        if counts["ko"] * 2 > total:
+            return "ko"
+        # Japanese mixes kana with Han characters, so kana presence marks the
+        # whole Han+kana block as Japanese rather than Chinese.
+        if counts["ja"] and (counts["ja"] + counts["zh"]) * 2 > total:
+            return "ja"
+        if counts["zh"] * 2 > total:
+            return "zh"
+        return "unknown"
 
     @staticmethod
     def _is_aligned(translations, romanizations, expected_count: int) -> bool:
@@ -148,17 +198,33 @@ class TranslatorService:
         value = cells[index]
         return value.strip() if isinstance(value, str) else ""
 
-    def _translate_lines_individually(self, texts: list) -> tuple:
+    def _translate_lines_individually(self, texts: list, should_abort=None) -> tuple:
         """Translate each line separately, preserving index alignment."""
         if not texts:
             return [], [], "unknown"
+
+        def aborted() -> bool:
+            return bool(should_abort and should_abort())
+
+        if aborted():
+            return ["" for _ in texts], ["" for _ in texts], "unknown"
+
+        def translate_one(text):
+            # Checked per task so queued lines stop quickly after a track change.
+            if aborted():
+                return "", "", "unknown"
+            try:
+                return self._translate_single(text)
+            except Exception as exc:
+                logger.debug(f"Single translation error: {exc}")
+                return "", "", "unknown"
 
         results = [("", "", "unknown") for _ in texts]
         workers = min(MAX_FALLBACK_WORKERS, len(texts))
         try:
             with ThreadPoolExecutor(max_workers=workers) as pool:
                 futures = {
-                    pool.submit(self._translate_single, text): index
+                    pool.submit(translate_one, text): index
                     for index, text in enumerate(texts)
                 }
                 for future, index in futures.items():
@@ -169,6 +235,8 @@ class TranslatorService:
         except Exception as exc:
             logger.debug(f"Translation pool error: {exc}")
             for index, text in enumerate(texts):
+                if aborted():
+                    break
                 try:
                     results[index] = self._translate_single(text)
                 except Exception:
@@ -200,7 +268,8 @@ class TranslatorService:
     def _translate_batch(self, texts: list) -> tuple:
         """
         Translates a batch and extracts both translated text and phonetic romanization.
-        Returns exactly one translation/romanization per input line.
+        Returns aligned lists on success; empty lists on failure so the caller
+        can fall back per line while honouring cancellation.
         """
         if not texts:
             return [], [], "unknown"
@@ -213,12 +282,12 @@ class TranslatorService:
             )
         except Exception as exc:
             logger.debug(f"Batch translation error: {exc}")
-            return self._translate_lines_individually(texts)
+            return [], [], "unknown"
 
         translations = self._parse_marked_translations(translated_str, len(texts))
         if translations is None:
             logger.debug("Translated batch lost its index markers; using per-line fallback.")
-            return self._translate_lines_individually(texts)
+            return [], [], "unknown"
 
         romanizations = self._align_romanizations(romaji_str, texts)
         return translations, romanizations, lang

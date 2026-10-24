@@ -406,7 +406,8 @@ class AppAPI:
             app.current_generation_id += 1
             generation_id = app.current_generation_id
             app.current_lyrics_key = _make_track_key(artist, title)
-            app.current_lyrics = None
+            app._pending_lyrics = None
+            app._pending_translations = None
 
         threading.Thread(
             target=app._fetch_and_translate_lyrics,
@@ -435,7 +436,8 @@ class AppAPI:
                 app.current_generation_id += 1
                 generation_id = app.current_generation_id
                 app.current_lyrics_key = _make_track_key(artist, title)
-                app.current_lyrics = None
+                app._pending_lyrics = None
+                app._pending_translations = None
 
         result["reloaded"] = matches_live
         if matches_live:
@@ -491,12 +493,10 @@ class SpotifyLyricsApp:
         self.discord_rpc = DiscordRPC()
 
         self.current_track = None
-        self.last_track_key = None
         self.current_artist = ""
         self.current_title = ""
         self.current_duration = 0.0
         self.current_lyrics_key = None
-        self.current_lyrics = None
         self.last_sync_time = 0
         self.last_position = 0
         self.playback_status = 0
@@ -504,6 +504,16 @@ class SpotifyLyricsApp:
         # Guards generation/track state only; never held during network calls.
         self.state_lock = threading.Lock()
         self.current_generation_id = 0
+
+        # The webview starts after the media listener.  Payloads produced before
+        # the page finishes loading are cached here and replayed exactly once.
+        self._ui_lock = threading.Lock()
+        self._window_ready = False
+        self._pending_track = None
+        self._pending_playback = None
+        self._pending_lyrics = None
+        self._pending_translations = None
+        self._inflight_fetches = set()
 
         self.api = AppAPI(self)
 
@@ -559,6 +569,13 @@ class SpotifyLyricsApp:
             on_top=False,
             transparent=False
         )
+
+        # Replay any media/lyrics payloads that were produced while the page
+        # was still loading.  The handler is idempotent.
+        try:
+            self.window.events.loaded += self._on_window_loaded
+        except Exception as exc:
+            logger.warning("Could not register window loaded handler: %s", exc)
 
         webview.start(debug=False)
 
@@ -630,6 +647,119 @@ class SpotifyLyricsApp:
         elif status == 5:
             self.discord_rpc.clear()
 
+    # ------------------------------------------------------------------
+    # Window-ready payload delivery / replay
+    # ------------------------------------------------------------------
+    def _deliver_track(self, generation_id, payload):
+        with self._ui_lock:
+            with self.state_lock:
+                if generation_id != self.current_generation_id:
+                    return
+                self._pending_track = (generation_id, payload)
+                ready = self._window_ready
+            if ready:
+                self.evaluate_js(f"window.updateTrack({json.dumps(payload)})")
+
+    def _deliver_playback(self, generation_id, payload, send=True):
+        with self._ui_lock:
+            with self.state_lock:
+                if generation_id != self.current_generation_id:
+                    return
+                self._pending_playback = (generation_id, payload)
+                ready = self._window_ready and send
+            if ready:
+                self.evaluate_js(
+                    f"window.updatePlaybackState({json.dumps(payload)})"
+                )
+
+    def _deliver_lyrics(self, generation_id, payload):
+        with self._ui_lock:
+            with self.state_lock:
+                if generation_id != self.current_generation_id:
+                    return
+                self._pending_lyrics = (generation_id, payload)
+                ready = self._window_ready
+            if not ready:
+                return
+            if payload is None:
+                self.evaluate_js("window.updateLyrics(null)")
+            else:
+                self.evaluate_js(f"window.updateLyrics({json.dumps(payload)})")
+
+    def _deliver_translations(self, generation_id, payload):
+        with self._ui_lock:
+            with self.state_lock:
+                if generation_id != self.current_generation_id:
+                    return
+                self._pending_translations = (generation_id, payload)
+                ready = self._window_ready
+            if ready:
+                self.evaluate_js(
+                    f"window.updateTranslations({json.dumps(payload)})"
+                )
+
+    def _on_window_loaded(self, *args):
+        """Replay the latest payloads once, after the webview can execute JS."""
+        with self._ui_lock:
+            with self.state_lock:
+                if self._window_ready:
+                    return
+                self._window_ready = True
+                generation_id = self.current_generation_id
+                track = self._pending_track
+                playback = self._pending_playback
+                lyrics = self._pending_lyrics
+                translations = self._pending_translations
+                artist = self.current_artist
+                title = self.current_title
+                duration = self.current_duration
+                lyrics_target = self.current_lyrics_key
+                inflight = generation_id in self._inflight_fetches
+
+            def current(entry):
+                return entry is not None and entry[0] == generation_id
+
+            if current(track):
+                self.evaluate_js(
+                    f"window.updateTrack({json.dumps(track[1])})"
+                )
+            if current(playback):
+                self.evaluate_js(
+                    f"window.updatePlaybackState({json.dumps(playback[1])})"
+                )
+            if current(lyrics):
+                if lyrics[1] is None:
+                    self.evaluate_js("window.updateLyrics(null)")
+                else:
+                    self.evaluate_js(
+                        f"window.updateLyrics({json.dumps(lyrics[1])})"
+                    )
+            if current(translations):
+                self.evaluate_js(
+                    f"window.updateTranslations({json.dumps(translations[1])})"
+                )
+
+            has_lyrics = (
+                current(lyrics)
+                and isinstance(lyrics[1], dict)
+                and bool(lyrics[1].get("lines"))
+            )
+            live_key = _make_track_key(artist, title)
+            need_fetch = bool(
+                artist
+                and title
+                and not has_lyrics
+                and not inflight
+                and lyrics_target == live_key
+            )
+
+        if need_fetch:
+            threading.Thread(
+                target=self._fetch_and_translate_lyrics,
+                args=(artist, title, duration, generation_id),
+                daemon=True,
+            ).start()
+
     def on_media_update(self, data):
         if not data:
             return
@@ -681,12 +811,12 @@ class SpotifyLyricsApp:
             self.current_generation_id += 1
             generation_id = self.current_generation_id
             self.current_track = track_key
-            self.last_track_key = track_key
             self.current_artist = artist
             self.current_title = title
             self.current_duration = duration
             self.current_lyrics_key = track_key
-            self.current_lyrics = None
+            self._pending_lyrics = None
+            self._pending_translations = None
             self.last_position = position
             self.last_sync_time = time.time()
             self.playback_status = status
@@ -709,7 +839,16 @@ class SpotifyLyricsApp:
         payload.setdefault("playback_rate", self._playback_rate(data))
         payload.setdefault("is_playing", status == 4)
 
-        self.evaluate_js(f"window.updateTrack({json.dumps(payload)})")
+        playback_payload = {
+            "position_ms": int(round(position * 1000)),
+            "is_playing": status == 4,
+            "playback_rate": self._playback_rate(data),
+            "duration_ms": int(round(duration * 1000)),
+        }
+        self._deliver_track(generation_id, payload)
+        # Stored for the loaded replay, but not sent separately while the full
+        # track payload already carries the position/status.
+        self._deliver_playback(generation_id, playback_payload, send=False)
 
         if title and artist:
             threading.Thread(
@@ -720,6 +859,7 @@ class SpotifyLyricsApp:
 
     def _apply_playback_delta(self, data, status, position):
         with self.state_lock:
+            generation_id = self.current_generation_id
             self.last_position = position
             self.last_sync_time = time.time()
             self.playback_status = status
@@ -745,7 +885,7 @@ class SpotifyLyricsApp:
             "playback_rate": self._playback_rate(data),
             "duration_ms": int(round(duration * 1000)),
         }
-        self.evaluate_js(f"window.updatePlaybackState({json.dumps(payload)})")
+        self._deliver_playback(generation_id, payload)
 
     def load_history_lyrics(self, artist, title):
         """Fetch a history song without disturbing the live track identity."""
@@ -753,7 +893,8 @@ class SpotifyLyricsApp:
             self.current_generation_id += 1
             generation_id = self.current_generation_id
             self.current_lyrics_key = _make_track_key(artist, title)
-            self.current_lyrics = None
+            self._pending_lyrics = None
+            self._pending_translations = None
         threading.Thread(
             target=self._fetch_and_translate_lyrics,
             args=(artist, title, 0, generation_id),
@@ -767,6 +908,9 @@ class SpotifyLyricsApp:
                 generation_id = self.current_generation_id
             if self.current_lyrics_key is None:
                 self.current_lyrics_key = _make_track_key(artist, title)
+            if generation_id in self._inflight_fetches:
+                return
+            self._inflight_fetches.add(generation_id)
             preview = _make_track_key(artist, title) != _make_track_key(
                 self.current_artist, self.current_title
             )
@@ -774,10 +918,10 @@ class SpotifyLyricsApp:
         def should_abort():
             return not self._is_current_fetch(generation_id, artist, title)
 
-        if should_abort():
-            return
-
         try:
+            if should_abort():
+                return
+
             # 1. Fetch Synced Lyrics
             lyrics_data = self.lyrics_service.fetch_lyrics(
                 artist, title, duration, should_abort=should_abort,
@@ -786,7 +930,7 @@ class SpotifyLyricsApp:
             if should_abort():
                 return
             if not lyrics_data or not lyrics_data.get("lines"):
-                self.evaluate_js("window.updateLyrics(null)")
+                self._deliver_lyrics(generation_id, None)
                 return
 
             raw_lines = lyrics_data["lines"]
@@ -805,7 +949,7 @@ class SpotifyLyricsApp:
             }
             if should_abort():
                 return
-            self.evaluate_js(f"window.updateLyrics({json.dumps(initial_payload)})")
+            self._deliver_lyrics(generation_id, initial_payload)
 
             # 3. BACKGROUND TRANSLATION & PHONETICS
             translated_lines, dominant_lang = self.translator_service.translate_lines(
@@ -822,12 +966,15 @@ class SpotifyLyricsApp:
             }
             if should_abort():
                 return
-            self.evaluate_js(f"window.updateTranslations({json.dumps(trans_payload)})")
+            self._deliver_translations(generation_id, trans_payload)
 
         except Exception as e:
             logger.warning("Lyrics/Translation error: %s", e)
             if not should_abort():
-                self.evaluate_js("window.updateLyrics(null)")
+                self._deliver_lyrics(generation_id, None)
+        finally:
+            with self.state_lock:
+                self._inflight_fetches.discard(generation_id)
 
     def reload_current_lyrics(self):
         with self.state_lock:
@@ -841,7 +988,8 @@ class SpotifyLyricsApp:
             self.current_generation_id += 1
             generation_id = self.current_generation_id
             self.current_lyrics_key = _make_track_key(artist, title)
-            self.current_lyrics = None
+            self._pending_lyrics = None
+            self._pending_translations = None
 
         threading.Thread(
             target=self._fetch_and_translate_lyrics,
