@@ -23,6 +23,9 @@ MIN_HEIGHT = 420
 DEFAULT_MINI_WIDTH = 560
 MIN_MINI_WIDTH = 420
 MAX_MINI_WIDTH = 1400
+DEFAULT_SQUARE_SIZE = 420
+MIN_SQUARE_SIZE = 280
+MAX_SQUARE_SIZE = 900
 
 # Keys this module (and main.py) is allowed to write.  Everything else belongs
 # to the frontend and must not be copied back from a stale snapshot.
@@ -33,6 +36,7 @@ OWNED_SETTING_KEYS = frozenset(
         "window_width",
         "window_height",
         "mini_width",
+        "square_size",
         "always_on_top",
         "close_to_tray",
         "view_mode",
@@ -73,6 +77,14 @@ def clamp_mini_width(width):
     if w is None or w <= 0:
         w = DEFAULT_MINI_WIDTH
     return max(MIN_MINI_WIDTH, min(MAX_MINI_WIDTH, w))
+
+
+def clamp_square_size(size):
+    """Return a usable square window size (between 280px and 900px)."""
+    s = _as_int(size, DEFAULT_SQUARE_SIZE)
+    if s is None or s <= 0:
+        s = DEFAULT_SQUARE_SIZE
+    return max(MIN_SQUARE_SIZE, min(MAX_SQUARE_SIZE, s))
 
 
 def _virtual_screen():
@@ -174,6 +186,7 @@ def load_window_settings(settings):
         "width": width,
         "height": height,
         "mini_width": clamp_mini_width(settings.get("mini_width", DEFAULT_MINI_WIDTH)),
+        "square_size": clamp_square_size(settings.get("square_size", DEFAULT_SQUARE_SIZE)),
         "always_on_top": bool(settings.get("always_on_top", False)),
         "close_to_tray": bool(settings.get("close_to_tray", True)),
         "view_mode": settings.get("view_mode", "card"),
@@ -198,6 +211,9 @@ def persist_settings(changes):
 
         if "mini_width" in allowed:
             allowed["mini_width"] = clamp_mini_width(allowed["mini_width"])
+
+        if "square_size" in allowed:
+            allowed["square_size"] = clamp_square_size(allowed["square_size"])
 
         if "window_width" in allowed or "window_height" in allowed:
             width, height = clamp_size(

@@ -71,6 +71,8 @@
     romanization: true,
     isMini: false,
     isMiniExpanded: false,
+    isSquare: false,
+    squareSize: 420,
     isFullscreen: false,
     isSplit: false,
     pinned: false,
@@ -116,6 +118,7 @@
     sleepTimerText: $('sleepTimerText'),
     translationStatus: $('translationStatus'),
     btnMini: $('btnMini'),
+    btnSquare: $('btnSquare'),
     btnFullscreen: $('btnFullscreen'),
     btnSettings: $('btnSettings'),
     btnOverflow: $('btnOverflow'),
@@ -191,8 +194,28 @@
     btnMiniOpen: $('btnMiniOpen'),
     btnMiniPin: $('btnMiniPin'),
     btnMiniClose: $('btnMiniClose'),
+    btnMiniSquare: $('btnMiniSquare'),
     miniDrawer: $('miniDrawer'),
     miniLyricsScroll: $('miniLyricsScroll'),
+    // Square mode
+    squareHeader: $('squareHeader'),
+    squareTitle: $('squareTitle'),
+    btnSquarePin: $('btnSquarePin'),
+    btnSquareExpand: $('btnSquareExpand'),
+    btnSquareClose: $('btnSquareClose'),
+    squareFooter: $('squareFooter'),
+    squareScrubTrack: $('squareScrubTrack'),
+    squareScrubFill: $('squareScrubFill'),
+    squareTime: $('squareTime'),
+    btnSquareViewMode: $('btnSquareViewMode'),
+    squareViewModeText: $('squareViewModeText'),
+    btnSquarePrev: $('btnSquarePrev'),
+    btnSquarePlay: $('btnSquarePlay'),
+    squarePlayUse: $('squarePlayUse'),
+    btnSquareNext: $('btnSquareNext'),
+    btnSquareToMini: $('btnSquareToMini'),
+    btnSquareToCard: $('btnSquareToCard'),
+    squareResizeHandle: $('squareResizeHandle'),
     // Settings
     settingsOverlay: $('settingsOverlay'),
     settingsSheet: $('settingsSheet'),
@@ -665,11 +688,17 @@
     var label = AppState.isPlaying ? 'Pause' : 'Play';
     el.playUse.setAttribute('href', name);
     el.miniPlayUse.setAttribute('href', name);
+    if (el.squarePlayUse) el.squarePlayUse.setAttribute('href', name);
     el.btnPlayPause.setAttribute('aria-label', label);
     el.btnPlayPause.setAttribute('data-tooltip', label);
     el.btnMiniPlay.setAttribute('aria-label', label);
     el.btnMiniPlay.setAttribute('data-tooltip', label);
     el.btnMiniPlay.classList.toggle('active', AppState.isPlaying);
+    if (el.btnSquarePlay) {
+      el.btnSquarePlay.setAttribute('aria-label', label);
+      el.btnSquarePlay.setAttribute('data-tooltip', label);
+      el.btnSquarePlay.classList.toggle('active', AppState.isPlaying);
+    }
     el.body.classList.toggle('is-playing', AppState.isPlaying);
   }
 
@@ -695,6 +724,8 @@
     el.scrubFill.style.width = (progress * 100) + '%';
     el.scrubHandle.style.left = (progress * 100) + '%';
     el.miniProgressFill.style.width = (progress * 100) + '%';
+    if (el.squareScrubFill) el.squareScrubFill.style.width = (progress * 100) + '%';
+    if (el.squareTime) el.squareTime.textContent = formatTime(display);
     el.scrubTrack.setAttribute('aria-valuemax', String(Math.round(AppState.duration || 0)));
     el.scrubTrack.setAttribute('aria-valuenow', String(Math.round(display)));
     el.scrubTrack.setAttribute('aria-valuetext', formatTime(display) + ' of ' + formatTime(AppState.duration));
@@ -1408,6 +1439,9 @@
       el.currentTime.textContent = '0:00';
       el.scrubFill.style.width = '0%';
       el.miniProgressFill.style.width = '0%';
+      if (el.squareScrubFill) el.squareScrubFill.style.width = '0%';
+      if (el.squareTime) el.squareTime.textContent = '0:00';
+      if (el.squareTitle) el.squareTitle.textContent = 'Connecting…';
       setTrackImage('');
       setProvider('', true);
       setLanguage('unknown');
@@ -1447,6 +1481,9 @@
     el.stageArtist.textContent = AppState.track.artist || 'Unknown artist';
     el.stageAlbum.textContent = AppState.track.album;
     el.totalTime.textContent = formatTime(AppState.duration);
+    if (el.squareTitle) {
+      el.squareTitle.textContent = AppState.track.title + (AppState.track.artist ? ' • ' + AppState.track.artist : '');
+    }
 
     var positionMs = data.position_ms !== undefined && data.position_ms !== null
       ? Number(data.position_ms)
@@ -2534,6 +2571,8 @@
       { title: 'Vocabulary notebook', sub: 'Saved words and definitions', icon: 'book', run: function () { openVocab(''); } },
       { title: 'Toggle mini mode', sub: 'Ctrl+Shift+M', icon: 'pip', run: function () { setMiniMode(!AppState.isMini); } },
       { title: 'Mini mode: Cycle width', sub: '560px → 760px → 960px', icon: 'pip', run: function () { cycleMiniWidth(); } },
+      { title: 'Toggle square mode', sub: 'Ctrl+Shift+S', icon: 'square', run: function () { setSquareMode(!AppState.isSquare); } },
+      { title: 'Square mode: Cycle size', sub: '320px → 420px → 520px → 640px', icon: 'square', run: function () { cycleSquareSize(); } },
       { title: 'Toggle fullscreen', sub: 'F11', icon: 'expand', run: function () { setFullscreen(!AppState.isFullscreen); } },
       { title: 'Toggle always on top', sub: AppState.pinned ? 'On' : 'Off', icon: 'pin', run: function () { setPinned(!AppState.pinned); } },
       { title: 'Toggle ghost mode', sub: AppState.ghost ? 'On' : 'Off', icon: 'eye-off', run: function () { setGhostMode(!AppState.ghost); } },
@@ -3036,6 +3075,7 @@
     el.body.classList.remove('view-both', 'view-trans-only', 'view-orig-only');
     el.body.classList.add('view-' + next);
     el.viewModeText.textContent = LYRIC_VIEW_LABELS[next];
+    if (el.squareViewModeText) el.squareViewModeText.textContent = LYRIC_VIEW_LABELS[next];
     Array.prototype.forEach.call(el.viewModeGroup.querySelectorAll('[data-lyrics-mode]'), function (button) {
       button.setAttribute('aria-pressed', String(button.dataset.lyricsMode === next));
       button.classList.toggle('is-active', button.dataset.lyricsMode === next);
@@ -3121,6 +3161,10 @@
     el.menuPin.setAttribute('aria-checked', String(AppState.pinned));
     el.btnMiniPin.setAttribute('aria-pressed', String(AppState.pinned));
     el.btnMiniPin.classList.toggle('active', AppState.pinned);
+    if (el.btnSquarePin) {
+      el.btnSquarePin.setAttribute('aria-pressed', String(AppState.pinned));
+      el.btnSquarePin.classList.toggle('active', AppState.pinned);
+    }
     if (opts.backend !== false) callApi('toggle_pin', AppState.pinned);
     if (opts.persist !== false) persistSettings({ always_on_top: AppState.pinned });
     if (opts.announce) showToast(AppState.pinned ? 'Always on top' : 'No longer on top', { icon: 'pin' });
@@ -3198,6 +3242,10 @@
         el.btnFullscreen.setAttribute('aria-pressed', 'false');
         callApi('toggle_fullscreen');
         clearTimeout(chromeTimer);
+      }
+      if (AppState.isSquare) {
+        AppState.isSquare = false;
+        el.body.classList.remove('mode-square');
       }
       AppState.isMini = true;
       el.body.classList.add('mode-mini');
@@ -3337,11 +3385,154 @@
     left.addEventListener('dblclick', onDoubleClick);
   }
 
+  function setSquareMode(square, options) {
+    var opts = options || {};
+    var next = Boolean(square);
+    if (next === AppState.isSquare) {
+      if (next && opts.force) refreshSquare();
+      return;
+    }
+    if (next) {
+      if (AppState.isFullscreen) {
+        AppState.isFullscreen = false;
+        el.body.classList.remove('mode-fullscreen', 'chrome-hidden', 'layout-split');
+        el.btnFullscreen.setAttribute('aria-pressed', 'false');
+        callApi('toggle_fullscreen');
+        clearTimeout(chromeTimer);
+      }
+      if (AppState.isMini) {
+        if (AppState.isMiniExpanded) setMiniExpanded(false, { backend: true });
+        AppState.isMini = false;
+        el.body.classList.remove('mode-mini');
+        el.miniBar.hidden = true;
+      }
+      AppState.isSquare = true;
+      el.body.classList.add('mode-square');
+      refreshSquare();
+      if (opts.backend !== false) callApi('toggle_square_mode', true);
+      if (opts.persist !== false) persistSettings({ view_mode: 'square' });
+      if (opts.announce) showToast('Square mode', { icon: 'square' });
+    } else {
+      AppState.isSquare = false;
+      el.body.classList.remove('mode-square');
+      if (opts.backend !== false) callApi('toggle_square_mode', false);
+      if (opts.persist !== false) persistSettings({ view_mode: 'card' });
+      if (opts.announce) showToast('Full window', { icon: 'expand' });
+    }
+    syncWindowUi();
+  }
+
+  function refreshSquare() {
+    if (el.squareTitle) {
+      if (!AppState.hasTrack) {
+        el.squareTitle.textContent = 'Connecting…';
+      } else {
+        el.squareTitle.textContent = (AppState.track.title || 'Playing') +
+          (AppState.track.artist ? ' • ' + AppState.track.artist : '');
+      }
+    }
+    if (el.squareViewModeText) {
+      el.squareViewModeText.textContent = LYRIC_VIEW_LABELS[AppState.lyricViewMode] || 'DUAL';
+    }
+    if (el.btnSquarePin) {
+      el.btnSquarePin.setAttribute('aria-pressed', String(AppState.pinned));
+      el.btnSquarePin.classList.toggle('active', AppState.pinned);
+    }
+    if (AppState.activeIndex >= 0 && AppState.lyrics[AppState.activeIndex]) {
+      var activeEl = $('line-' + AppState.activeIndex);
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'auto', block: 'center' });
+      }
+    }
+  }
+
+  function cycleSquareSize() {
+    var current = AppState.squareSize || Math.max(window.innerWidth, window.innerHeight);
+    var presets = [320, 420, 520, 640];
+    var next = presets[0];
+    for (var i = 0; i < presets.length; i++) {
+      if (current < presets[i] - 25) {
+        next = presets[i];
+        break;
+      }
+    }
+    AppState.squareSize = next;
+    callApi('set_square_size', next);
+    showToast('Square size: ' + next + 'px', { icon: 'square' });
+  }
+
+  function initSquareResize() {
+    var handle = el.squareResizeHandle;
+    if (!handle) return;
+    var isResizing = false;
+    var startX = 0;
+    var startY = 0;
+    var startSize = 420;
+    var pendingSize = 420;
+    var rafId = null;
+
+    function onMouseDown(e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      isResizing = true;
+      startX = e.screenX;
+      startY = e.screenY;
+      startSize = Math.max(window.innerWidth, window.innerHeight);
+      pendingSize = startSize;
+      handle.classList.add('is-resizing');
+      el.body.classList.add('resizing-square');
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    }
+
+    function onMouseMove(e) {
+      if (!isResizing) return;
+      var dx = e.screenX - startX;
+      var dy = e.screenY - startY;
+      var delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+      var targetSize = Math.max(280, Math.min(900, Math.round(startSize + delta)));
+      if (targetSize === pendingSize) return;
+      pendingSize = targetSize;
+      AppState.squareSize = pendingSize;
+      if (!rafId) {
+        rafId = requestAnimationFrame(function () {
+          rafId = null;
+          callApi('set_square_size', pendingSize);
+        });
+      }
+    }
+
+    function onMouseUp(e) {
+      if (!isResizing) return;
+      isResizing = false;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      handle.classList.remove('is-resizing');
+      el.body.classList.remove('resizing-square');
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      callApi('set_square_size', pendingSize);
+    }
+
+    function onDoubleClick(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      cycleSquareSize();
+    }
+
+    handle.addEventListener('mousedown', onMouseDown);
+    handle.addEventListener('dblclick', onDoubleClick);
+  }
+
   function setFullscreen(fullscreen, options) {
     var opts = options || {};
     var next = Boolean(fullscreen);
     if (next === AppState.isFullscreen) return;
     if (next && AppState.isMini) setMiniMode(false, { persist: false, backend: false });
+    if (next && AppState.isSquare) setSquareMode(false, { persist: false, backend: false });
     AppState.isFullscreen = next;
     el.body.classList.toggle('mode-fullscreen', next);
     el.btnFullscreen.setAttribute('aria-pressed', String(next));
@@ -3371,11 +3562,19 @@
   function syncWindowUi() {
     el.btnMini.classList.toggle('active', AppState.isMini);
     el.btnMini.setAttribute('aria-pressed', String(AppState.isMini));
+    if (el.btnSquare) {
+      el.btnSquare.classList.toggle('active', AppState.isSquare);
+      el.btnSquare.setAttribute('aria-pressed', String(AppState.isSquare));
+    }
     el.btnFullscreen.classList.toggle('active', AppState.isFullscreen);
     el.btnFullscreen.setAttribute('aria-pressed', String(AppState.isFullscreen));
     el.btnSplitLayout.hidden = !AppState.isFullscreen;
     el.btnMiniPin.setAttribute('aria-pressed', String(AppState.pinned));
     el.btnMiniPin.classList.toggle('active', AppState.pinned);
+    if (el.btnSquarePin) {
+      el.btnSquarePin.setAttribute('aria-pressed', String(AppState.pinned));
+      el.btnSquarePin.classList.toggle('active', AppState.pinned);
+    }
   }
 
   function scheduleChromeHide() {
@@ -3399,13 +3598,20 @@
   function applyWindowMode(mode, options) {
     var opts = options || {};
     if (mode === 'mini') {
+      setSquareMode(false, { persist: false, backend: false });
       setMiniMode(true, { persist: false, backend: opts.backend !== false, announce: false });
+    } else if (mode === 'square') {
+      setMiniMode(false, { persist: false, backend: false });
+      setFullscreen(false, { persist: false, backend: false });
+      setSquareMode(true, { persist: false, backend: opts.backend !== false, announce: false });
     } else if (mode === 'fullscreen') {
       setMiniMode(false, { persist: false, backend: false });
+      setSquareMode(false, { persist: false, backend: false });
       setFullscreen(true, { persist: false, backend: opts.backend !== false, announce: false });
     } else {
       setFullscreen(false, { persist: false, backend: opts.backend !== false });
       setMiniMode(false, { persist: false, backend: opts.backend !== false });
+      setSquareMode(false, { persist: false, backend: opts.backend !== false });
       opts.persist = false;
     }
     if (AppState.settings.split_layout) setSplit(true, { persist: false });
@@ -3419,6 +3625,7 @@
 
   function openSettings(tab) {
     if (AppState.isMini) setMiniMode(false, { persist: false, backend: true });
+    if (AppState.isSquare) setSquareMode(false, { persist: false, backend: true });
     closeOverflow();
     closeLineContext();
     setSettingsTab(tab || lastSettingsTab);
@@ -3613,14 +3820,27 @@
     // Playback
     el.btnPlayPause.addEventListener('click', function () { callApi('play_pause'); });
     el.btnMiniPlay.addEventListener('click', function () { callApi('play_pause'); });
+    el.btnSquarePlay && el.btnSquarePlay.addEventListener('click', function () { callApi('play_pause'); });
     el.btnPrev.addEventListener('click', function () { callApi('prev_track'); });
+    el.btnSquarePrev && el.btnSquarePrev.addEventListener('click', function () { callApi('prev_track'); });
     el.btnNext.addEventListener('click', function () { callApi('next_track'); });
     el.btnMiniNext.addEventListener('click', function () { callApi('next_track'); });
+    el.btnSquareNext && el.btnSquareNext.addEventListener('click', function () { callApi('next_track'); });
     el.btnHeart.addEventListener('click', toggleFavorite);
     el.btnMiniOpen.addEventListener('click', function () { setMiniMode(false, { announce: true }); });
+    el.btnMiniSquare && el.btnMiniSquare.addEventListener('click', function () { setMiniMode(false, { persist: false, backend: false }); setSquareMode(true, { announce: true }); });
     el.btnMiniLyrics.addEventListener('click', function () { setMiniExpanded(!AppState.isMiniExpanded); });
     el.btnMiniPin.addEventListener('click', function () { setPinned(!AppState.pinned, { announce: true }); });
     el.btnMiniClose.addEventListener('click', function () { callApi('close'); });
+
+    // Square mode controls
+    el.btnSquare && el.btnSquare.addEventListener('click', function () { setSquareMode(!AppState.isSquare, { announce: true }); });
+    el.btnSquareExpand && el.btnSquareExpand.addEventListener('click', function () { setSquareMode(false, { announce: true }); });
+    el.btnSquareClose && el.btnSquareClose.addEventListener('click', function () { callApi('close'); });
+    el.btnSquarePin && el.btnSquarePin.addEventListener('click', function () { setPinned(!AppState.pinned, { announce: true }); });
+    el.btnSquareViewMode && el.btnSquareViewMode.addEventListener('click', cycleViewMode);
+    el.btnSquareToMini && el.btnSquareToMini.addEventListener('click', function () { setSquareMode(false, { persist: false, backend: false }); setMiniMode(true, { announce: true }); });
+    el.btnSquareToCard && el.btnSquareToCard.addEventListener('click', function () { setSquareMode(false, { announce: true }); });
 
     // Volume wheel: album art and dock, discoverable via the volume button.
     el.npArtWrap.addEventListener('wheel', handleWheelVolume, { passive: false });
@@ -3901,11 +4121,57 @@
       }
     });
 
+    if (el.squareScrubTrack) {
+      function scrubFromSquare(e) {
+        if (AppState.duration <= 0) return 0;
+        var r = el.squareScrubTrack.getBoundingClientRect();
+        var ratio = clamp((e.clientX - r.left) / Math.max(1, r.width), 0, 1);
+        scrubValue = ratio * AppState.duration;
+        renderPosition(scrubValue);
+        return scrubValue;
+      }
+      el.squareScrubTrack.addEventListener('pointerdown', function (e) {
+        if (AppState.duration <= 0) return;
+        scrubbing = true;
+        AppState.isScrubbing = true;
+        stopFrame();
+        el.squareScrubTrack.setPointerCapture && el.squareScrubTrack.setPointerCapture(e.pointerId);
+        scrubFromSquare(e);
+      });
+      el.squareScrubTrack.addEventListener('pointermove', function (e) {
+        if (!scrubbing) return;
+        scrubFromSquare(e);
+      });
+      el.squareScrubTrack.addEventListener('pointerup', function (e) {
+        if (!scrubbing) return;
+        scrubbing = false;
+        AppState.isScrubbing = false;
+        scrubFromSquare(e);
+        seekTo(scrubValue, true);
+        if (AppState.isPlaying) ensureFrame();
+      });
+      el.squareScrubTrack.addEventListener('pointercancel', function () {
+        scrubbing = false;
+        AppState.isScrubbing = false;
+        if (AppState.isPlaying) ensureFrame();
+      });
+    }
+
     // Global keyboard
     document.addEventListener('keydown', function (event) {
       if (event.key === 'F11') {
         event.preventDefault();
         setFullscreen(!AppState.isFullscreen, { announce: true });
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        setSquareMode(!AppState.isSquare, { announce: true });
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'm') {
+        event.preventDefault();
+        setMiniMode(!AppState.isMini, { announce: true });
         return;
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -3982,6 +4248,7 @@
     });
 
     initMiniResize();
+    initSquareResize();
   }
 
   function handleWheelVolume(event) {
@@ -4016,6 +4283,10 @@
 
   window.toggleMiniModeHotKey = function () {
     setMiniMode(!AppState.isMini, { announce: true });
+  };
+
+  window.toggleSquareModeHotKey = function () {
+    setSquareMode(!AppState.isSquare, { announce: true });
   };
 
   window.cycleViewMode = cycleViewMode;

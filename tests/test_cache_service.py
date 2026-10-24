@@ -85,6 +85,19 @@ class CacheServiceTestCase(unittest.TestCase):
             self.assertTrue(window_state.persist_settings({"mini_width": 900}))
             self.assertEqual(self.cache.get_setting("mini_width"), 900)
 
+    def test_square_size_clamping_and_persistence(self):
+        self.assertEqual(window_state.clamp_square_size(None), 420)
+        self.assertEqual(window_state.clamp_square_size(150), 280)
+        self.assertEqual(window_state.clamp_square_size(1500), 900)
+        self.assertEqual(window_state.clamp_square_size("500"), 500)
+
+        settings = window_state.load_window_settings({"square_size": 480})
+        self.assertEqual(settings["square_size"], 480)
+
+        with mock.patch("window_state.get_cache", return_value=self.cache):
+            self.assertTrue(window_state.persist_settings({"square_size": 600}))
+            self.assertEqual(self.cache.get_setting("square_size"), 600)
+
     def test_offset_normalization_and_round_trip(self):
         self.assertEqual(
             CacheService.normalize_track_key("  Daft   Punk ", " Get\tLucky\n"),

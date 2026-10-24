@@ -84,7 +84,7 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
                       target_lang: 'en',
                       romanization_enabled: true,
                       karaoke_sweep_enabled: true,
-                      view_mode: scenario === 'mini' ? 'mini' : (scenario === 'split' ? 'fullscreen' : 'card'),
+                      view_mode: scenario === 'mini' ? 'mini' : (scenario === 'square' ? 'square' : (scenario === 'split' ? 'fullscreen' : 'card')),
                       ghost_mode: false,
                       discord_rpc_enabled: true,
                       low_power_mode: false,
@@ -129,6 +129,9 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
                   toggle_mini_expand: function() {{ return Promise.resolve(true); }},
                   set_mini_width: function(w) {{ return Promise.resolve(w); }},
                   get_mini_width: function() {{ return Promise.resolve(560); }},
+                  toggle_square_mode: function() {{ return Promise.resolve(true); }},
+                  set_square_size: function(s) {{ return Promise.resolve(s); }},
+                  get_square_size: function() {{ return Promise.resolve(420); }},
                   toggle_ghost_mode: function() {{ return Promise.resolve(true); }},
                   toggle_discord_rpc: function() {{ return Promise.resolve(true); }},
                   seek: function() {{ return Promise.resolve(true); }},
@@ -149,7 +152,7 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
 
               // Feed scenario data after init
               setTimeout(function() {{
-                if (scenario === 'synced' || scenario === 'split' || scenario === 'mini' || scenario === 'palette' || scenario === 'settings' || scenario === 'search' || scenario === 'trans_only') {{
+                if (scenario === 'synced' || scenario === 'split' || scenario === 'mini' || scenario === 'square' || scenario === 'palette' || scenario === 'settings' || scenario === 'search' || scenario === 'trans_only') {{
                   window.updateTrack({{
                     title: 'Danger',
                     artist: 'BTS',
@@ -179,6 +182,8 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
                     document.body.classList.add('mode-fullscreen', 'layout-split');
                   }} else if (scenario === 'mini') {{
                     document.body.classList.add('mode-mini');
+                  }} else if (scenario === 'square') {{
+                    document.body.classList.add('mode-square');
                   }} else if (scenario === 'trans_only') {{
                     document.body.classList.remove('view-both', 'view-orig-only');
                     document.body.classList.add('view-trans-only');
@@ -278,6 +283,7 @@ def run_smoke():
         ("search", 480, 720, AUDIT_DIR / "07_manual_search.png"),
         ("trans_only", 480, 720, AUDIT_DIR / "08_view_trans_only.png"),
         ("arabic", 480, 720, AUDIT_DIR / "09_arabic_lyrics.png"),
+        ("square", 520, 520, AUDIT_DIR / "10_square_mode.png"),
     ]
 
     for name, w, h, out_path in scenarios:
@@ -286,6 +292,7 @@ def run_smoke():
             EDGE_EXE,
             "--headless=new",
             "--disable-gpu",
+            "--virtual-time-budget=1200",
             f"--window-size={w},{h}",
             f"--screenshot={out_path}",
             url,

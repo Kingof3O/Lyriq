@@ -58,11 +58,13 @@ class HotkeyThread(threading.Thread):
         # ID 3: Ctrl + Shift + H -> Boss Key (Hide / Show)
         # ID 4: Ctrl + Shift + L -> Lyrics View Mode (Dual / Trans / Orig)
         # ID 5: Ctrl + Shift + Space -> Spotify Play / Pause
+        # ID 6: Ctrl + Shift + S -> Square Mode
         user32.RegisterHotKey(None, 1, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 0x47)  # 'G'
         user32.RegisterHotKey(None, 2, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 0x4D)  # 'M'
         user32.RegisterHotKey(None, 3, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 0x48)  # 'H'
         user32.RegisterHotKey(None, 4, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 0x4C)  # 'L'
         user32.RegisterHotKey(None, 5, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 0x20)  # VK_SPACE
+        user32.RegisterHotKey(None, 6, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 0x53)  # 'S'
 
         msg = ctypes.wintypes.MSG()
         while self.running:
@@ -75,7 +77,7 @@ class HotkeyThread(threading.Thread):
             user32.TranslateMessage(ctypes.byref(msg))
             user32.DispatchMessageW(ctypes.byref(msg))
 
-        for hid in range(1, 6):
+        for hid in range(1, 7):
             try:
                 user32.UnregisterHotKey(None, hid)
             except Exception:
@@ -153,6 +155,15 @@ class AppAPI:
 
     def toggle_mini_mode(self, is_mini):
         self._app.set_mini_mode(bool(is_mini))
+
+    def toggle_square_mode(self, is_square):
+        self._app.set_square_mode(bool(is_square))
+
+    def set_square_size(self, size):
+        return self._app.set_square_size(size)
+
+    def get_square_size(self):
+        return self._app._square_size
 
     def toggle_mini_expand(self, is_expanded):
         self._app.set_mini_expand(bool(is_expanded))
@@ -558,8 +569,11 @@ class SpotifyLyricsApp:
         self._mini_width = window_state.DEFAULT_MINI_WIDTH
         self._mini_expanded = False
         self._is_mini = False
+        self._square_size = window_state.DEFAULT_SQUARE_SIZE
+        self._is_square = False
         self._is_fullscreen = False
         self._pending_mini = False
+        self._pending_square = False
         self._pending_fullscreen = False
         self._force_show_on_loaded = False
 
@@ -643,6 +657,7 @@ class SpotifyLyricsApp:
         geometry = window_state.load_window_settings(settings)
         self.close_to_tray = geometry["close_to_tray"]
         self._mini_width = geometry.get("mini_width", window_state.DEFAULT_MINI_WIDTH)
+        self._square_size = geometry.get("square_size", window_state.DEFAULT_SQUARE_SIZE)
         self._normal_geometry = {
             "x": geometry["x"],
             "y": geometry["y"],
@@ -657,12 +672,27 @@ class SpotifyLyricsApp:
         if self.start_minimized:
             window_kwargs["hidden"] = True
 
-        is_startup_mini = geometry.get("view_mode") == "mini"
+        view_mode = geometry.get("view_mode", "card")
+        is_startup_mini = view_mode == "mini"
+        is_startup_square = view_mode == "square"
         self._is_mini = is_startup_mini
-        init_width = self._mini_width if is_startup_mini else geometry["width"]
-        init_height = (270 if self._mini_expanded else MINI_HEIGHT) if is_startup_mini else geometry["height"]
-        init_min_w = window_state.MIN_MINI_WIDTH if is_startup_mini else window_state.MIN_WIDTH
-        init_min_h = 85 if is_startup_mini else window_state.MIN_HEIGHT
+        self._is_square = is_startup_square
+
+        if is_startup_mini:
+            init_width = self._mini_width
+            init_height = 270 if self._mini_expanded else MINI_HEIGHT
+            init_min_w = window_state.MIN_MINI_WIDTH
+            init_min_h = 85
+        elif is_startup_square:
+            init_width = self._square_size
+            init_height = self._square_size
+            init_min_w = window_state.MIN_SQUARE_SIZE
+            init_min_h = window_state.MIN_SQUARE_SIZE
+        else:
+            init_width = geometry["width"]
+            init_height = geometry["height"]
+            init_min_w = window_state.MIN_WIDTH
+            init_min_h = window_state.MIN_HEIGHT
 
         # Create pywebview window
         self.window = webview.create_window(
@@ -748,6 +778,11 @@ class SpotifyLyricsApp:
                 self.evaluate_js(
                     "window.toggleMiniModeHotKey && window.toggleMiniModeHotKey()"
                 )
+            elif action == "square":
+                self._show_window()
+                self.evaluate_js(
+                    "window.toggleSquareModeHotKey && window.toggleSquareModeHotKey()"
+                )
             elif action == "settings":
                 self._show_window()
                 self.evaluate_js(
@@ -784,6 +819,10 @@ class SpotifyLyricsApp:
                 self._update_native_min_size(window_state.MIN_MINI_WIDTH, 85)
                 curr_h = 270 if self._mini_expanded else MINI_HEIGHT
                 self.window.resize(self._mini_width, curr_h)
+            if self._pending_square and self._is_square and self.window:
+                self._pending_square = False
+                self._update_native_min_size(window_state.MIN_SQUARE_SIZE, window_state.MIN_SQUARE_SIZE)
+                self.window.resize(self._square_size, self._square_size)
             if self._pending_fullscreen and self._is_fullscreen and self.window:
                 self._pending_fullscreen = False
                 self.window.toggle_fullscreen()
@@ -791,7 +830,7 @@ class SpotifyLyricsApp:
             logger.exception("Could not apply the pending window mode")
 
     def _capture_normal_geometry(self):
-        if self._is_mini or self._is_fullscreen:
+        if self._is_mini or self._is_fullscreen or self._is_square:
             return
         geometry = self._geometry_snapshot()
         width, height = window_state.clamp_size(
@@ -809,6 +848,7 @@ class SpotifyLyricsApp:
         if (
             self.window
             and not self._is_mini
+            and not self._is_square
             and not self._is_fullscreen
             and self._window_is_shown()
         ):
@@ -832,6 +872,7 @@ class SpotifyLyricsApp:
         return (
             not self._quitting
             and not self._is_mini
+            and not self._is_square
             and not self._is_fullscreen
             and time.monotonic() >= self._ignore_geometry_until
         )
@@ -892,6 +933,8 @@ class SpotifyLyricsApp:
             return "fullscreen"
         if self._is_mini:
             return "mini"
+        if self._is_square:
+            return "square"
         return "card"
 
     def _persist_owned(self, values):
@@ -961,6 +1004,9 @@ class SpotifyLyricsApp:
         self._is_mini = enabled
         self._ignore_geometry_for()
         if enabled:
+            if self._is_square:
+                self._is_square = False
+                self._pending_square = False
             self._update_native_min_size(window_state.MIN_MINI_WIDTH, 85)
             if self.window and self._window_is_shown():
                 try:
@@ -1016,6 +1062,71 @@ class SpotifyLyricsApp:
         self._persist_owned({"mini_width": clamped})
         return clamped
 
+    def set_square_mode(self, enabled):
+        enabled = bool(enabled)
+        if enabled == self._is_square:
+            return
+        if not self._is_mini:
+            self._capture_normal_geometry()
+        if enabled and self._is_fullscreen:
+            self._is_fullscreen = False
+            self._pending_fullscreen = False
+            try:
+                if self.window and self._window_is_shown():
+                    self.window.toggle_fullscreen()
+            except Exception as exc:
+                logger.warning("Could not leave fullscreen for square mode: %s", exc)
+        if enabled and self._is_mini:
+            self._is_mini = False
+            self._pending_mini = False
+
+        self._is_square = enabled
+        self._ignore_geometry_for()
+        if enabled:
+            self._update_native_min_size(window_state.MIN_SQUARE_SIZE, window_state.MIN_SQUARE_SIZE)
+            if self.window and self._window_is_shown():
+                try:
+                    self.window.resize(self._square_size, self._square_size)
+                except Exception as exc:
+                    logger.warning("Could not resize into square mode: %s", exc)
+            else:
+                self._pending_square = True
+        else:
+            self._pending_square = False
+            self._update_native_min_size(window_state.MIN_WIDTH, window_state.MIN_HEIGHT)
+            geometry = dict(self._normal_geometry)
+            width, height = window_state.clamp_size(
+                geometry.get("width"), geometry.get("height")
+            )
+            geometry["width"] = width
+            geometry["height"] = height
+            with self._geometry_lock:
+                self._normal_geometry["width"] = width
+                self._normal_geometry["height"] = height
+            if self.window and self._window_is_shown():
+                try:
+                    x, y = geometry.get("x"), geometry.get("y")
+                    if x is not None and y is not None:
+                        self.window.move(int(x), int(y))
+                    self.window.resize(width, height)
+                except Exception as exc:
+                    logger.warning("Could not restore normal window size: %s", exc)
+
+        self._persist_owned(
+            {"view_mode": "square" if enabled else "card"}
+        )
+
+    def set_square_size(self, size):
+        clamped = window_state.clamp_square_size(size)
+        self._square_size = clamped
+        if self.window and self._is_square and self._window_is_shown():
+            try:
+                self.window.resize(clamped, clamped)
+            except Exception as exc:
+                logger.warning("Could not resize square window: %s", exc)
+        self._persist_owned({"square_size": clamped})
+        return clamped
+
     def set_fullscreen_mode(self, enabled):
         enabled = bool(enabled)
         if enabled == self._is_fullscreen:
@@ -1024,6 +1135,9 @@ class SpotifyLyricsApp:
             if self._is_mini:
                 self._is_mini = False
                 self._pending_mini = False
+            elif self._is_square:
+                self._is_square = False
+                self._pending_square = False
             else:
                 self._capture_normal_geometry()
         self._is_fullscreen = enabled
@@ -1183,6 +1297,8 @@ class SpotifyLyricsApp:
             elif hotkey_id == 5:  # Ctrl+Shift+Space: Play / Pause Spotify
                 if self.media_listener:
                     self.media_listener.toggle_play_pause()
+            elif hotkey_id == 6:  # Ctrl+Shift+S: Square Mode
+                self.evaluate_js("window.toggleSquareModeHotKey && window.toggleSquareModeHotKey()")
         except Exception as e:
             print("Hotkey handler error:", e)
 

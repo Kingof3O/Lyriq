@@ -54,12 +54,14 @@ SW_RESTORE = 9
 MENU_SHOW_HIDE = 1001
 MENU_PLAY_PAUSE = 1002
 MENU_MINI = 1003
+MENU_SQUARE = 1006
 MENU_SETTINGS = 1004
 MENU_QUIT = 1005
 
 ACTION_SHOW_HIDE = "show_hide"
 ACTION_PLAY_PAUSE = "play_pause"
 ACTION_MINI = "mini"
+ACTION_SQUARE = "square"
 ACTION_SETTINGS = "settings"
 ACTION_QUIT = "quit"
 
@@ -67,6 +69,7 @@ _MENU_ACTIONS = {
     MENU_SHOW_HIDE: ACTION_SHOW_HIDE,
     MENU_PLAY_PAUSE: ACTION_PLAY_PAUSE,
     MENU_MINI: ACTION_MINI,
+    MENU_SQUARE: ACTION_SQUARE,
     MENU_SETTINGS: ACTION_SETTINGS,
     MENU_QUIT: ACTION_QUIT,
 }
@@ -512,6 +515,7 @@ class TrayIcon:
             user32.AppendMenuW(menu, MF_STRING, MENU_SHOW_HIDE, "Show / Hide")
             user32.AppendMenuW(menu, MF_STRING, MENU_PLAY_PAUSE, "Play / Pause")
             user32.AppendMenuW(menu, MF_STRING, MENU_MINI, "Mini mode")
+            user32.AppendMenuW(menu, MF_STRING, MENU_SQUARE, "Square mode")
             user32.AppendMenuW(menu, MF_STRING, MENU_SETTINGS, "Settings")
             user32.AppendMenuW(menu, MF_SEPARATOR, 0, None)
             user32.AppendMenuW(menu, MF_STRING, MENU_QUIT, "Quit")

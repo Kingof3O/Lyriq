@@ -24,6 +24,7 @@
     <symbol id="icon-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
     <symbol id="icon-pin" viewBox="0 0 24 24"><path d="M12 17v5M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>
     <symbol id="icon-pip" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="12" y="12" width="6" height="5" rx="1"/></symbol>
+    <symbol id="icon-square" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/></symbol>
     <symbol id="icon-expand" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
     <symbol id="icon-collapse" viewBox="0 0 24 24"><path d="M9 3v4a2 2 0 0 1-2 2H3M15 3v4a2 2 0 0 0 2 2h4M9 21v-4a2 2 0 0 0-2-2H3M15 21v-4a2 2 0 0 1 2-2h4"/></symbol>
     <symbol id="icon-split" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></symbol>
@@ -70,6 +71,21 @@
   <div class="album-backdrop" id="albumBackdrop" aria-hidden="true"></div>
 
   <div class="app-shell" id="appShell">
+    <div class="square-header pywebview-drag-region" id="squareHeader">
+      <span class="square-title" id="squareTitle">Connecting…</span>
+      <div class="square-header-actions no-drag">
+        <button class="icon-btn square-mini-btn" id="btnSquarePin" type="button" aria-label="Always on top" data-tooltip="Always on top">
+          <svg class="icon"><use href="#icon-pin"></use></svg>
+        </button>
+        <button class="icon-btn square-mini-btn" id="btnSquareExpand" type="button" aria-label="Card mode" data-tooltip="Normal mode">
+          <svg class="icon"><use href="#icon-expand"></use></svg>
+        </button>
+        <button class="icon-btn square-mini-btn close-btn" id="btnSquareClose" type="button" aria-label="Close" data-tooltip="Close">
+          <svg class="icon"><use href="#icon-close"></use></svg>
+        </button>
+      </div>
+    </div>
+
     <header class="topbar pywebview-drag-region" id="topbar">
       <div class="brand no-drag">
         <span class="brand-mark" aria-hidden="true"><svg class="icon"><use href="#icon-music"></use></svg></span>
@@ -107,6 +123,9 @@
       <div class="top-actions no-drag">
         <button class="icon-btn" id="btnMini" type="button" aria-label="Mini mode" data-tooltip="Mini mode (Ctrl+Shift+M)">
           <svg class="icon"><use href="#icon-pip"></use></svg>
+        </button>
+        <button class="icon-btn" id="btnSquare" type="button" aria-label="Square mode" data-tooltip="Square mode (Ctrl+Shift+S)">
+          <svg class="icon"><use href="#icon-square"></use></svg>
         </button>
         <button class="icon-btn" id="btnFullscreen" type="button" aria-label="Fullscreen" aria-pressed="false" data-tooltip="Fullscreen (F11)">
           <svg class="icon"><use href="#icon-expand"></use></svg>
@@ -250,6 +269,44 @@
         </div>
       </div>
     </footer>
+
+    <footer class="square-footer" id="squareFooter">
+      <div class="square-progress-bar" id="squareScrubTrack" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+        <span class="square-progress-fill" id="squareScrubFill"></span>
+      </div>
+      <div class="square-footer-main">
+        <div class="square-footer-left">
+          <span class="square-time" id="squareTime">0:00</span>
+          <button class="square-chip" id="btnSquareViewMode" type="button" data-tooltip="Cycle lyrics view (Dual / Translation / Original)" aria-label="Cycle lyrics view">
+            <span id="squareViewModeText">DUAL</span>
+          </button>
+        </div>
+        <div class="square-footer-center">
+          <button class="icon-btn square-ctrl-btn" id="btnSquarePrev" type="button" aria-label="Previous track" data-tooltip="Previous">
+            <svg class="icon"><use href="#icon-prev"></use></svg>
+          </button>
+          <button class="icon-btn square-ctrl-btn square-play-btn" id="btnSquarePlay" type="button" aria-label="Play" data-tooltip="Play or pause">
+            <svg class="icon"><use id="squarePlayUse" href="#icon-play"></use></svg>
+          </button>
+          <button class="icon-btn square-ctrl-btn" id="btnSquareNext" type="button" aria-label="Next track" data-tooltip="Next">
+            <svg class="icon"><use href="#icon-next"></use></svg>
+          </button>
+        </div>
+        <div class="square-footer-right">
+          <button class="icon-btn square-ctrl-btn" id="btnSquareToMini" type="button" aria-label="Mini mode" data-tooltip="Mini mode (Ctrl+Shift+M)">
+            <svg class="icon"><use href="#icon-pip"></use></svg>
+          </button>
+          <button class="icon-btn square-ctrl-btn" id="btnSquareToCard" type="button" aria-label="Card mode" data-tooltip="Card mode">
+            <svg class="icon"><use href="#icon-split"></use></svg>
+          </button>
+          <div class="square-resize-handle no-drag" id="squareResizeHandle" title="Drag to resize square. Double-click to cycle sizes.">
+            <svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true">
+              <path d="M8 2 L2 8 M9 5 L5 9 M9 8 L8 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </footer>
   </div>
 
   <div class="mini-bar pywebview-drag-region" id="miniBar" hidden>
@@ -278,6 +335,9 @@
         </button>
         <button class="mini-btn" id="btnMiniOpen" type="button" aria-label="Open full window" data-tooltip="Open full window">
           <svg class="icon"><use href="#icon-expand"></use></svg>
+        </button>
+        <button class="mini-btn" id="btnMiniSquare" type="button" aria-label="Square mode" data-tooltip="Square mode (Ctrl+Shift+S)">
+          <svg class="icon"><use href="#icon-square"></use></svg>
         </button>
         <button class="mini-btn hover-action" id="btnMiniPin" type="button" aria-label="Always on top" aria-pressed="false" data-tooltip="Always on top">
           <svg class="icon"><use href="#icon-pin"></use></svg>
