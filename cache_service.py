@@ -115,10 +115,14 @@ class CacheService:
     def __init__(self, db_path=None):
         if db_path is None:
             self.db_path = str(app_paths.get_db_path())
-        elif str(db_path) == ":memory:":
-            self.db_path = ":memory:"
         else:
-            path = Path(str(db_path)).expanduser()
+            raw_path = str(db_path)
+            if raw_path == ":memory:":
+                raise ValueError(
+                    "CacheService does not support ':memory:' because each thread "
+                    "uses its own connection; pass a temporary database file instead."
+                )
+            path = Path(raw_path).expanduser()
             path.parent.mkdir(parents=True, exist_ok=True)
             self.db_path = str(path.resolve())
 
@@ -645,10 +649,14 @@ class CacheService:
         try:
             with self._write_lock:
                 conn = self._get_connection()
+                counts = {}
                 with conn:
                     for table in CACHE_TABLES:
                         cursor = conn.execute(f"DELETE FROM {table};")
-                        deleted[table] = max(0, cursor.rowcount)
+                        counts[table] = max(0, cursor.rowcount)
+                # Only report counts after the transaction committed. If any
+                # DELETE failed, the context manager rolled everything back.
+                deleted = counts
                 self._translation_writes_since_prune = 0
                 try:
                     conn.execute("VACUUM;")
@@ -656,6 +664,7 @@ class CacheService:
                     logger.debug("VACUUM after cache clear failed (non-fatal): %s", exc)
         except Exception as exc:
             logger.error("Cache clear error: %s", exc)
+            deleted = {}
         return deleted
 
     def get_cache_stats(self) -> dict:

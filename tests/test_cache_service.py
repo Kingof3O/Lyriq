@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest import mock
 
 import app_paths
+import cache_service
 from cache_service import CacheService
 
 
@@ -128,6 +129,34 @@ class CacheServiceTestCase(unittest.TestCase):
         self.assertEqual(cleared["translation_cache"], 0)
         self.assertEqual(cleared["thumbnails"], 0)
         self.assertEqual(cleared["settings"], 1)
+
+    def test_clear_cache_discards_counts_when_a_delete_fails(self):
+        lyrics = {"lines": [{"time": 0.0, "text": "rolled back"}]}
+        self.cache.save_lyrics("Artist", "Song", lyrics)
+        self.cache.save_translations_batch(
+            {"text": {"translation": "texto", "romaji": ""}}, "en"
+        )
+
+        broken_tables = ("lyrics_cache", "missing_table", "translation_cache")
+        with mock.patch.object(cache_service, "CACHE_TABLES", broken_tables):
+            with self.assertLogs("CacheService", level="ERROR"):
+                deleted = self.cache.clear_cache()
+
+        # A failed DELETE rolls the transaction back, so no counts are reported
+        # and the cache rows must still be present.
+        self.assertEqual(deleted, {})
+        self.assertEqual(self.cache.get_lyrics("Artist", "Song"), lyrics)
+        self.assertEqual(
+            self.cache.get_translations_batch(["text"], "en"),
+            {"text": {"translation": "texto", "romaji": ""}},
+        )
+        stats = self.cache.get_cache_stats()
+        self.assertEqual(stats["lyrics_cache"], 1)
+        self.assertEqual(stats["translation_cache"], 1)
+
+    def test_in_memory_database_is_rejected(self):
+        with self.assertRaises(ValueError):
+            CacheService(":memory:")
 
     def test_thumbnail_cache_evicts_oldest_rows(self):
         payload = "x" * 10
