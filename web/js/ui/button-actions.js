@@ -223,6 +223,15 @@
     el.lyricsViewport.addEventListener('touchmove', function () {
       AppState.userScrollUntil = Date.now() + 2600;
     }, { passive: true });
+    el.lyricsViewport.addEventListener('scroll', function () {
+      if (el.scrollRailThumb) {
+        var range = el.lyricsViewport.scrollHeight - el.lyricsViewport.clientHeight;
+        if (range > 0) {
+          var pct = (el.lyricsViewport.scrollTop / range) * 82;
+          el.scrollRailThumb.style.top = Math.min(82, Math.max(0, pct)) + '%';
+        }
+      }
+    }, { passive: true });
     el.lyricsList.addEventListener('click', function (event) {
       if (editingState) return;
       var lineEl = event.target.closest('.lyric-line');
@@ -245,11 +254,43 @@
       var original = event.target.closest('.line-original');
       if (!original) return;
       event.stopPropagation();
+      var lineEl = event.target.closest('.lyric-line');
+      var origText = lineEl ? (lineEl.querySelector('.line-original') ? lineEl.querySelector('.line-original').textContent : '') : '';
+      var transText = lineEl ? (lineEl.querySelector('.line-translation') ? lineEl.querySelector('.line-translation').textContent : '') : '';
       var selection = window.getSelection();
       var word = selection ? selection.toString().trim() : '';
       if (!word) word = original.textContent.trim();
-      if (word) triggerWordLookup(word, event.clientX, event.clientY);
+      if (word) triggerWordLookup(word, event.clientX, event.clientY, origText, transText);
     });
     el.ctxCopy.addEventListener('click', copyContextLine);
     el.ctxEdit.addEventListener('click', editContextLine);
+
+    if (el.btnStudyLensClose) el.btnStudyLensClose.addEventListener('click', closeStudyLens);
+    if (el.btnStudyCopy) {
+      el.btnStudyCopy.addEventListener('click', function () {
+        var text = dictState.word + (dictState.romaji ? ' (' + dictState.romaji + ')' : '') + ': ' + dictState.meaning;
+        copyText(text).then(function () { showToast('Word copied to clipboard', { icon: 'copy' }); });
+      });
+    }
+    if (el.btnStudySave) {
+      el.btnStudySave.addEventListener('click', function () {
+        if (!dictState.word) return;
+        if (!hasApi('save_vocab_word')) {
+          showToast('Vocabulary is unavailable in this build.', { icon: 'alert', tone: 'danger' });
+          return;
+        }
+        callApi('save_vocab_word', dictState.word, dictState.romaji, dictState.meaning, dictState.language, AppState.track.title)
+          .then(function (ok) {
+            if (ok === false) {
+              showToast('Could not save this word.', { icon: 'alert', tone: 'danger' });
+              return;
+            }
+            if (el.btnStudySave) el.btnStudySave.textContent = '✓ Saved';
+            vocabLoaded = false;
+            showToast('Saved “' + dictState.word + '” to vocabulary', { icon: 'bookmark' });
+          });
+      });
+    }
+    if (el.btnDockPin) el.btnDockPin.addEventListener('click', function () { togglePin(); });
+    if (el.btnDockMini) el.btnDockMini.addEventListener('click', function () { toggleMiniMode(); });
   }

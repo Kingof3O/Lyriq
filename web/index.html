@@ -90,7 +90,7 @@
     <header class="topbar pywebview-drag-region" id="topbar">
       <div class="brand no-drag">
         <span class="brand-mark" aria-hidden="true"><img src="assets/lyriq-symbol-color.svg" alt="Lyriq" class="brand-logo-img"></span>
-        <span class="brand-name">Lyriq</span>
+        <span class="brand-name">Lyriq <small class="brand-sub">Reader</small></span>
         <span class="live-bars" id="liveBars" aria-hidden="true"><span></span><span></span><span></span></span>
       </div>
 
@@ -102,23 +102,9 @@
         <div class="np-meta">
           <div class="np-title-line">
             <h1 class="track-title" id="trackTitle">Connecting to Spotify</h1>
-            <button class="icon-btn heart-btn" id="btnHeart" type="button" aria-label="Favorite song" aria-pressed="false" data-tooltip="Favorite">
-              <svg class="icon"><use id="heartUse" href="#icon-heart"></use></svg>
-            </button>
           </div>
           <p class="track-sub"><span id="trackArtist">Play a song to begin</span><span class="sep" id="subSep" aria-hidden="true" hidden>·</span><span id="trackAlbum"></span></p>
         </div>
-      </div>
-
-      <div class="top-badges no-drag" id="topBadges">
-        <span class="badge lang-badge" id="flagBadge" hidden></span>
-        <span class="badge provider-badge" id="providerBadge" hidden></span>
-        <span class="badge unsynced-badge" id="syncBadge" hidden>UNSYNCED</span>
-        <span class="badge ghost-badge" id="ghostBadge" hidden>GHOST</span>
-        <span class="badge timer-badge" id="sleepTimerBadge" tabindex="0" role="button" aria-label="Sleep timer active. Activate to cancel." hidden>
-          <svg class="icon" aria-hidden="true"><use href="#icon-timer"></use></svg><span id="sleepTimerText">--:--</span>
-        </span>
-        <span class="status-chip" id="translationStatus" hidden><span class="spinner" aria-hidden="true"></span><span>Translating</span></span>
       </div>
 
       <div class="top-actions no-drag">
@@ -133,9 +119,6 @@
         </button>
         <button class="icon-btn" id="btnSettings" type="button" aria-label="Settings" data-tooltip="Settings">
           <svg class="icon"><use href="#icon-settings"></use></svg>
-        </button>
-        <button class="icon-btn" id="btnOverflow" type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded="false" data-tooltip="More actions">
-          <svg class="icon"><use href="#icon-more"></use></svg>
         </button>
         <span class="top-divider" aria-hidden="true"></span>
         <button class="icon-btn window-btn" id="btnMin" type="button" aria-label="Minimize window" data-tooltip="Minimize">
@@ -165,6 +148,27 @@
         <button class="menu-item" id="menuOpenLrc" type="button" role="menuitem" data-icon="folder-open"><span>Open LRC folder</span></button>
       </div>
     </header>
+
+    <div class="stage-meta no-drag" id="stageMeta">
+      <span class="tag tag-view" id="viewModeBadge">DUAL</span>
+      <span class="tag tag-lang" id="flagBadge" hidden></span>
+      <span class="tag tag-romaji" id="romajiBadge" hidden>ROMAJI</span>
+      <span class="tag unsynced-badge" id="syncBadge" hidden>UNSYNCED</span>
+      <span class="tag ghost-badge" id="ghostBadge" hidden>GHOST</span>
+      <span class="tag timer-badge" id="sleepTimerBadge" tabindex="0" role="button" aria-label="Sleep timer active. Activate to cancel." hidden>
+        <svg class="icon" aria-hidden="true"><use href="#icon-timer"></use></svg><span id="sleepTimerText">--:--</span>
+      </span>
+      <span class="status-chip" id="translationStatus" hidden><span class="spinner" aria-hidden="true"></span><span>Translating</span></span>
+    </div>
+
+    <div class="stage-actions no-drag" id="stageActions">
+      <button class="icon-btn heart-btn" id="btnHeart" type="button" aria-label="Favorite song" aria-pressed="false" data-tooltip="Favorite">
+        <svg class="icon"><use id="heartUse" href="#icon-heart"></use></svg>
+      </button>
+      <button class="icon-btn" id="btnOverflow" type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded="false" data-tooltip="More actions">
+        <svg class="icon"><use href="#icon-more"></use></svg>
+      </button>
+    </div>
 
     <main class="workspace" id="workspace">
       <section class="fullscreen-stage" id="fullscreenStage" aria-label="Now playing">
@@ -230,23 +234,49 @@
             </div>
           </div>
         </div>
+        <div class="scrollrail" id="scrollRail" aria-hidden="true"><div class="scrollrail-thumb" id="scrollRailThumb"></div></div>
+        <div class="corner-note" id="cornerNote" aria-hidden="true">Ctrl+K commands · F11 immersive · Esc close</div>
       </section>
     </main>
 
+    <aside class="study-lens" id="studyLens" hidden>
+      <button class="icon-btn study-lens-close" id="btnStudyLensClose" type="button" aria-label="Close Study Lens"><svg class="icon"><use href="#icon-close"></use></svg></button>
+      <div class="study-label">Selected word</div>
+      <div class="study-word" id="studyWord">Word</div>
+      <div class="study-pron" id="studyPron">Pronunciation</div>
+      <div class="study-chips" id="studyChips">
+        <span class="study-chip" id="studyLangChip">Korean</span>
+        <span class="study-chip" id="studyTypeChip">common</span>
+      </div>
+      <div class="study-def" id="studyDef">Definition</div>
+      <div class="study-note" id="studyNote">Tone depends heavily on relationship and context.</div>
+      <div class="study-quote" id="studyQuote">
+        <div id="studyQuoteOriginal">Source lyric line</div>
+        <div class="study-quote-trans" id="studyQuoteTrans">Translation</div>
+      </div>
+      <div class="study-hair"></div>
+      <div class="study-label">Notebook</div>
+      <div class="study-small">Saved words include the source line, track, pronunciation and translation for export.</div>
+      <div class="study-save-row">
+        <button class="btn btn-sm secondary" id="btnStudyCopy" type="button">Copy</button>
+        <button class="btn btn-sm btn-primary btn-study-save" id="btnStudySave" type="button">☆ Save word</button>
+      </div>
+    </aside>
+
     <footer class="player-dock" id="playerDock">
-      <div class="dock-progress">
-        <span class="time-stamp" id="currentTime">0:00</span>
+      <div class="dock-progress" id="dockProgress">
         <div class="scrub-track" id="scrubTrack" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
           <span class="scrub-fill" id="scrubFill"></span>
           <span class="scrub-handle" id="scrubHandle"></span>
         </div>
-        <span class="time-stamp" id="totalTime">0:00</span>
       </div>
       <div class="dock-main">
         <div class="dock-left">
+          <span class="time-stamp" id="currentTime">0:00</span>
+          <span class="time-stamp" id="totalTime" hidden>0:00</span>
           <span class="playing-indicator" id="playingIndicator" aria-hidden="true"><span></span><span></span><span></span></span>
           <button class="dock-chip" id="btnOffsetChip" type="button" data-tooltip="Lyric offset for this song" aria-label="Lyric offset for this song">
-            <span>Offset</span><span class="dock-offset" id="dockOffset">0.0s</span>
+            <span>LIVE</span><span class="dock-offset" id="dockOffset">0.0s</span>
           </button>
         </div>
         <div class="dock-controls">
@@ -261,11 +291,17 @@
           </button>
         </div>
         <div class="dock-right">
-          <button class="icon-btn" id="btnVolume" type="button" aria-label="Volume help" data-tooltip="Scroll the album art to change Windows volume">
-            <svg class="icon"><use href="#icon-volume"></use></svg>
-          </button>
           <button class="dock-chip view-chip" id="btnViewMode" type="button" data-tooltip="Lyrics view: Dual, translation or original" aria-label="Cycle lyrics view mode">
             <span id="viewModeText">DUAL</span>
+          </button>
+          <button class="icon-btn" id="btnDockPin" type="button" aria-label="Always on top" data-tooltip="Always on top">
+            <svg class="icon"><use href="#icon-pin"></use></svg>
+          </button>
+          <button class="icon-btn" id="btnDockMini" type="button" aria-label="Mini mode" data-tooltip="Mini mode (Ctrl+Shift+M)">
+            <svg class="icon"><use href="#icon-pip"></use></svg>
+          </button>
+          <button class="icon-btn" id="btnVolume" type="button" aria-label="Volume help" data-tooltip="Scroll the album art to change Windows volume" hidden>
+            <svg class="icon"><use href="#icon-volume"></use></svg>
           </button>
         </div>
       </div>
@@ -375,6 +411,13 @@
       </nav>
       <div class="sheet-body">
         <section class="sheet-panel" id="panel-appearance" role="tabpanel" aria-labelledby="tab-appearance">
+          <div class="settings-specimen-preview" id="appearancePreview">
+            <div class="specimen-marker"></div>
+            <div class="specimen-lines">
+              <div class="specimen-original" id="specimenOriginal">I keep your voice between the stations</div>
+              <div class="specimen-trans" id="specimenTrans">駅と駅のあいだに、君の声を残してる</div>
+            </div>
+          </div>
           <div class="setting-block">
             <span class="setting-label">Theme</span>
             <div class="segmented" id="themeGroup" role="group" aria-label="Theme">
@@ -577,18 +620,67 @@
   </div>
 
   <div class="overlay" id="searchModal" hidden>
-    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="searchTitle" tabindex="-1">
-      <header class="modal-head">
-        <div><span class="eyebrow">Library</span><h2 id="searchTitle">Search lyrics</h2></div>
-        <button class="icon-btn" id="btnSearchClose" type="button" aria-label="Close search" data-tooltip="Close"><svg class="icon"><use href="#icon-close"></use></svg></button>
+    <div class="modal modal-wide search-workspace" role="dialog" aria-modal="true" aria-labelledby="searchTitle" tabindex="-1">
+      <header class="modal-head search-modal-head">
+        <div class="brand search-brand"><img src="assets/lyriq-symbol-color.svg" alt="" class="brand-logo-img"> Lyriq <small class="brand-sub">Lyrics Search</small></div>
+        <div class="search-head-actions">
+          <span class="search-esc-hint">Esc close</span>
+          <button class="icon-btn" id="btnSearchClose" type="button" aria-label="Close search" data-tooltip="Close"><svg class="icon"><use href="#icon-close"></use></svg></button>
+        </div>
       </header>
-      <form class="search-form" id="searchLyricsForm">
-        <label><span>Artist</span><input class="text-input" id="searchArtist" type="text" autocomplete="off"></label>
-        <label><span>Title</span><input class="text-input" id="searchTitleInput" type="text" autocomplete="off"></label>
-        <label class="duration-field"><span>Duration (s)</span><input class="text-input" id="searchDuration" type="number" min="0" step="1"></label>
-        <button class="btn btn-primary" id="btnSearchSubmit" type="submit"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg> Search</button>
-      </form>
-      <div class="modal-body" id="searchResults"></div>
+      <div class="search-query-bar">
+        <span class="search-query-icon" aria-hidden="true">⌕</span>
+        <form class="search-query-form" id="searchLyricsForm">
+          <input class="search-query-input" id="searchQueryInput" type="text" placeholder="Search song title and artist…" autocomplete="off" aria-label="Search lyrics query">
+          <input class="text-input" id="searchArtist" type="hidden">
+          <input class="text-input" id="searchTitleInput" type="hidden">
+          <input class="text-input" id="searchDuration" type="hidden">
+          <button class="btn btn-primary btn-search-go" id="btnSearchSubmit" type="submit"><kbd>Enter search</kbd></button>
+        </form>
+      </div>
+      <div class="search-trackid">
+        <div class="search-track-art-wrap">
+          <img class="search-track-art" id="searchTrackArt" alt="" hidden>
+          <span class="search-track-disc" id="searchTrackDisc"><svg class="icon"><use href="#icon-disc"></use></svg></span>
+        </div>
+        <div class="search-track-meta">
+          <div class="search-track-title" id="searchCurrentTitle">No track</div>
+          <div class="search-track-sub" id="searchCurrentSub">Open Spotify · 0:00 · current track</div>
+        </div>
+        <div class="search-track-badge"><span class="tag" id="searchCandidateCount">0 candidates</span></div>
+      </div>
+      <div class="search-grid">
+        <div class="search-candidates-col">
+          <div class="study-label search-col-label">Candidates</div>
+          <div class="search-rows" id="searchResults"></div>
+        </div>
+        <div class="search-inspector-col">
+          <div class="panel search-inspector" id="searchInspector">
+            <div class="study-label">Match inspector</div>
+            <div class="search-inspect-title" id="inspectTitle">Select a candidate</div>
+            <div class="study-note" id="inspectDesc">Compare remote provider and local LRC matches.</div>
+            <div class="study-hair"></div>
+            <div class="search-metric-row">
+              <span class="study-small">Title similarity</span><b id="metricTitle">—</b>
+              <div class="search-metric-bar"><i id="metricTitleBar" style="width:0%"></i></div>
+            </div>
+            <div class="search-metric-row">
+              <span class="study-small">Artist similarity</span><b id="metricArtist">—</b>
+              <div class="search-metric-bar"><i id="metricArtistBar" style="width:0%"></i></div>
+            </div>
+            <div class="search-metric-row">
+              <span class="study-small">Duration match</span><b id="metricDuration">—</b>
+              <div class="search-metric-bar"><i id="metricDurationBar" style="width:0%"></i></div>
+            </div>
+            <div class="search-metric-row">
+              <span class="study-small">Synced coverage</span><b id="metricSynced">—</b>
+              <div class="search-metric-bar"><i id="metricSyncedBar" style="width:0%"></i></div>
+            </div>
+            <button class="btn btn-primary btn-inspect-use" id="btnInspectUse" type="button" disabled>Use this version</button>
+            <button class="btn btn-inspect-preview" id="btnInspectPreview" type="button" disabled>Preview against playback</button>
+          </div>
+        </div>
+      </div>
       <footer class="modal-foot search-foot">
         <span class="path-text" id="searchFolderPath">Local LRC folder</span>
         <button class="text-btn" id="btnSearchOpenFolder" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-folder-open"></use></svg> Open LRC folder</button>

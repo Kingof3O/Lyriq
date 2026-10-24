@@ -1,5 +1,5 @@
   // ---------------------------------------------------------------------------
-  // Dictionary lookup
+  // Dictionary lookup & Study Lens
   // ---------------------------------------------------------------------------
 
   var dictState = {
@@ -8,10 +8,36 @@
     meaning: '',
     language: 'unknown',
     x: 0,
-    y: 0
+    y: 0,
+    quoteOriginal: '',
+    quoteTrans: ''
   };
 
-  function triggerWordLookup(word, clientX, clientY) {
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function highlightWordInText(source, word) {
+    if (!source) return '';
+    var safeSource = escapeHtml(source);
+    var safeWord = escapeHtml(word);
+    if (!safeWord) return safeSource;
+    var idx = safeSource.indexOf(safeWord);
+    if (idx === -1) return safeSource;
+    return safeSource.slice(0, idx) + '<b class="selected-word-highlight">' + safeWord + '</b>' + safeSource.slice(idx + safeWord.length);
+  }
+
+  function closeStudyLens() {
+    if (el.studyLens) el.studyLens.hidden = true;
+    document.body.classList.remove('study-open');
+    if (el.appShell) el.appShell.classList.remove('study-open');
+  }
+
+  function triggerWordLookup(word, clientX, clientY, sourceOrig, sourceTrans) {
     if (!AppState.wordLookup) return;
     var value = String(word || '').trim();
     if (!value) return;
@@ -21,7 +47,10 @@
     dictState.language = AppState.language;
     dictState.x = clientX;
     dictState.y = clientY;
+    dictState.quoteOriginal = sourceOrig || value;
+    dictState.quoteTrans = sourceTrans || '';
 
+    // Floating card fallback
     el.dictCard.hidden = false;
     el.dictWord.textContent = value;
     el.dictRomaji.textContent = '';
@@ -38,22 +67,49 @@
     el.dictCard.style.left = x + 'px';
     el.dictCard.style.top = y + 'px';
 
+    // Desktop Study Lens side inspector
+    var isDesktopReader = window.innerWidth >= 860 && !AppState.mini && !AppState.square;
+    if (isDesktopReader && el.studyLens) {
+      el.dictCard.hidden = true; // Use side inspector on desktop
+      el.studyLens.hidden = false;
+      document.body.classList.add('study-open');
+      if (el.appShell) el.appShell.classList.add('study-open');
+
+      if (el.studyWord) el.studyWord.textContent = value;
+      if (el.studyPron) el.studyPron.textContent = '…';
+      if (el.studyDef) el.studyDef.textContent = 'Translating…';
+      if (el.studyNote) el.studyNote.textContent = 'Tone and context depend on the song narrative.';
+      if (el.studyQuoteOriginal) el.studyQuoteOriginal.innerHTML = highlightWordInText(dictState.quoteOriginal, value);
+      if (el.studyQuoteTrans) el.studyQuoteTrans.textContent = dictState.quoteTrans;
+      if (el.studyLangChip) el.studyLangChip.textContent = String(AppState.language || 'Lyrics').toUpperCase();
+    }
+
     if (!hasApi('lookup_word')) {
       el.dictMeaning.textContent = 'Word lookup is unavailable in this build.';
+      if (el.studyDef) el.studyDef.textContent = 'Word lookup is unavailable in this build.';
       return;
     }
+
     callApi('lookup_word', value).then(function (result) {
       if (!result) {
         el.dictMeaning.textContent = 'No definition found.';
+        if (el.studyDef) el.studyDef.textContent = 'No definition found.';
         return;
       }
-      el.dictWord.textContent = result.word || value;
+      var resWord = result.word || value;
       dictState.romaji = result.romaji || '';
       dictState.meaning = result.trans || 'No definition found.';
       dictState.language = result.lang || AppState.language;
+
+      el.dictWord.textContent = resWord;
       el.dictRomaji.textContent = dictState.romaji;
       el.dictMeaning.textContent = dictState.meaning;
       el.dictLang.textContent = 'Language: ' + String(dictState.language).toUpperCase();
+
+      if (el.studyWord) el.studyWord.textContent = resWord;
+      if (el.studyPron) el.studyPron.textContent = dictState.romaji ? (dictState.romaji + ' · ' + String(dictState.language).toUpperCase()) : String(dictState.language).toUpperCase();
+      if (el.studyDef) el.studyDef.textContent = dictState.meaning;
+      if (el.studyLangChip) el.studyLangChip.textContent = String(dictState.language).toUpperCase();
     });
   }
 
@@ -74,4 +130,3 @@
     utterance.rate = 0.85;
     window.speechSynthesis.speak(utterance);
   }
-

@@ -155,3 +155,114 @@
   text-align: right;
 }
 
+/* --------------------------------------------------------------------------
+   Settings layout and specimen preview (conforming to 05-settings.html)
+   -------------------------------------------------------------------------- */
+
+.settings-specimen-preview {
+  height: 120px;
+  border-top: 1px solid #23232A;
+  border-bottom: 1px solid #23232A;
+  margin: 12px 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.015);
+  border-radius: 4px;
+}
+
+.specimen-marker {
+  width: 3px;
+  height: 48px;
+  background: var(--brand);
+  border-radius: 3px;
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.55);
+  flex-shrink: 0;
+}
+
+.specimen-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.specimen-original {
+  font-size: calc(26px * var(--font-scale));
+  font-weight: 660;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1.15;
+}
+
+.specimen-trans {
+  font-size: calc(15px * var(--font-scale));
+  color: var(--brand-soft);
+  margin-top: 2px;
+}
+
+@media (min-width: 820px) {
+  #settingsSheet {
+    width: min(880px, 92vw);
+    right: 50%;
+    transform: translateX(50%);
+    top: 5vh;
+    bottom: 5vh;
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "head head"
+      "rail body";
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.65);
+    background: #101014;
+    overflow: hidden;
+  }
+
+  #settingsSheet .sheet-head {
+    grid-area: head;
+    border-bottom: 1px solid #202027;
+  }
+
+  #settingsSheet .sheet-tabs {
+    grid-area: rail;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 24px 14px;
+    border-right: 1px solid #202027;
+    border-bottom: none;
+    background: #0E0E12;
+  }
+
+  #settingsSheet .sheet-tab {
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #868691;
+    justify-content: flex-start;
+    display: flex;
+    align-items: center;
+    border: none;
+  }
+
+  #settingsSheet .sheet-tab:hover {
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  #settingsSheet .sheet-tab.is-active {
+    color: #FFFFFF;
+    background: #181820;
+    font-weight: 600;
+  }
+
+  #settingsSheet .sheet-body {
+    grid-area: body;
+    padding: 24px 44px 36px;
+  }
+}

@@ -41,7 +41,10 @@
     el.body.classList.remove('view-both', 'view-trans-only', 'view-orig-only');
     el.body.classList.add('view-' + next);
     el.viewModeText.textContent = LYRIC_VIEW_LABELS[next];
+    if (el.viewModeBadge) el.viewModeBadge.textContent = LYRIC_VIEW_LABELS[next];
     if (el.squareViewModeText) el.squareViewModeText.textContent = LYRIC_VIEW_LABELS[next];
+    if (el.specimenTrans) el.specimenTrans.hidden = (next === 'orig-only');
+    if (el.specimenOriginal) el.specimenOriginal.hidden = (next === 'trans-only');
     Array.prototype.forEach.call(el.viewModeGroup.querySelectorAll('[data-lyrics-mode]'), function (button) {
       button.setAttribute('aria-pressed', String(button.dataset.lyricsMode === next));
       button.classList.toggle('is-active', button.dataset.lyricsMode === next);
@@ -88,6 +91,7 @@
     AppState.settings.romanization_enabled = AppState.romanization;
     el.body.classList.toggle('hide-romaji', !AppState.romanization);
     el.checkRomaji.setAttribute('aria-checked', String(AppState.romanization));
+    if (el.romajiBadge) el.romajiBadge.hidden = !AppState.romanization;
     if (opts.persist !== false) persistSettings({ romanization_enabled: AppState.romanization });
   }
 
