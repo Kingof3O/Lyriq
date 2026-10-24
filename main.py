@@ -657,14 +657,21 @@ class SpotifyLyricsApp:
         if self.start_minimized:
             window_kwargs["hidden"] = True
 
+        is_startup_mini = geometry.get("view_mode") == "mini"
+        self._is_mini = is_startup_mini
+        init_width = self._mini_width if is_startup_mini else geometry["width"]
+        init_height = (270 if self._mini_expanded else MINI_HEIGHT) if is_startup_mini else geometry["height"]
+        init_min_w = window_state.MIN_MINI_WIDTH if is_startup_mini else window_state.MIN_WIDTH
+        init_min_h = 85 if is_startup_mini else window_state.MIN_HEIGHT
+
         # Create pywebview window
         self.window = webview.create_window(
             title=APP_TITLE,
             url=html_path,
             js_api=self.api,
-            width=geometry["width"],
-            height=geometry["height"],
-            min_size=(window_state.MIN_WIDTH, window_state.MIN_HEIGHT),
+            width=init_width,
+            height=init_height,
+            min_size=(init_min_w, init_min_h),
             frameless=True,
             easy_drag=True,
             on_top=geometry["always_on_top"],
@@ -774,6 +781,7 @@ class SpotifyLyricsApp:
         try:
             if self._pending_mini and self._is_mini and self.window:
                 self._pending_mini = False
+                self._update_native_min_size(window_state.MIN_MINI_WIDTH, 85)
                 curr_h = 270 if self._mini_expanded else MINI_HEIGHT
                 self.window.resize(self._mini_width, curr_h)
             if self._pending_fullscreen and self._is_fullscreen and self.window:
@@ -916,6 +924,26 @@ class SpotifyLyricsApp:
                 values["close_to_tray"] = self.close_to_tray
         self._persist_owned(values)
 
+    def _update_native_min_size(self, min_w, min_h):
+        try:
+            if not self.window:
+                return
+            self.window.min_size = (int(min_w), int(min_h))
+            native = getattr(self.window, "native", None)
+            if not native:
+                return
+            from System.Drawing import Size
+            scale = getattr(native, "_scale", 1.0)
+            target_size = Size(int(min_w * scale), int(min_h * scale))
+
+            if getattr(native, "InvokeRequired", False):
+                from System import Action
+                native.Invoke(Action(lambda: setattr(native, "MinimumSize", target_size)))
+            else:
+                native.MinimumSize = target_size
+        except Exception as exc:
+            logger.debug("Could not update native MinimumSize: %s", exc)
+
     def set_mini_mode(self, enabled):
         enabled = bool(enabled)
         if enabled == self._is_mini:
@@ -933,6 +961,7 @@ class SpotifyLyricsApp:
         self._is_mini = enabled
         self._ignore_geometry_for()
         if enabled:
+            self._update_native_min_size(window_state.MIN_MINI_WIDTH, 85)
             if self.window and self._window_is_shown():
                 try:
                     curr_h = 270 if self._mini_expanded else MINI_HEIGHT
@@ -943,6 +972,7 @@ class SpotifyLyricsApp:
                 self._pending_mini = True
         else:
             self._pending_mini = False
+            self._update_native_min_size(window_state.MIN_WIDTH, window_state.MIN_HEIGHT)
             geometry = dict(self._normal_geometry)
             width, height = window_state.clamp_size(
                 geometry.get("width"), geometry.get("height")
