@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.exe
+*.db
+*.db-wal
+*.db-shm
+.superpowers/
+.pytest_cache/
+.ruff_cache/
+.venv/
+data/
+probe-out.txt

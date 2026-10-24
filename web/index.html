@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify Realtime Lyrics</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@500;700;900&family=Noto+Sans+KR:wght@500;700;900&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+</head>
+<body class="mode-window view-both" data-theme="dynamic">
+
+  <!-- Ambient Dynamic Lighting Blobs (Tinted by Album Art) -->
+  <div class="mesh-bg">
+    <div class="orb orb-1" id="orb1"></div>
+    <div class="orb orb-2" id="orb2"></div>
+    <div class="orb orb-3" id="orb3"></div>
+  </div>
+  <div class="glass-backdrop" id="glassBackdrop"></div>
+
+  <!-- Notification Toast Pill -->
+  <div class="toast-pill" id="toastPill" style="display: none;">
+    <span id="toastMsg">✓ Copied to clipboard!</span>
+  </div>
+
+  <!-- Main App Shell -->
+  <div class="app-shell" id="appShell">
+    
+    <!-- Top Navigation Bar -->
+    <header class="app-navbar pywebview-drag-region">
+      <div class="brand-section">
+        <div class="status-indicator">
+          <span class="live-pulse"></span>
+          <svg class="spotify-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.308-1.76-8.792-.963-.335.077-.67-.133-.746-.468-.077-.334.132-.67.467-.746 3.808-.87 7.076-.496 9.721 1.114.294.18.387.562.207.856zm1.224-2.724c-.226.367-.71.482-1.077.256-2.69-1.654-6.79-2.134-9.97-1.168-.413.125-.85-.11-1.002-.524-.15-.413.111-.85.525-1.002 3.633-1.103 8.153-.566 11.235 1.325.367.226.482.71.256 1.077zm.106-2.836C14.692 8.95 8.56 8.75 5.01 9.83c-.496.15-1.022-.134-1.173-.63-.15-.497.134-1.023.63-1.174 4.08-1.238 10.84-1.01 14.673 1.265.447.265.592.846.326 1.293-.265.447-.847.592-1.294.326z"/>
+          </svg>
+        </div>
+        <span class="brand-text">Lyrics</span>
+        <span class="badge-pill flag-badge" id="flagBadge" style="display: none;">🇰🇷 KO</span>
+        <span class="badge-pill ghost-badge" id="ghostBadge" style="display: none;">GHOST (Ctrl+Shift+G)</span>
+        <span class="badge-pill timer-badge" id="sleepTimerBadge" style="display: none;" title="Click to cancel timer">🌙 30:00</span>
+      </div>
+
+      <!-- Segmented Button Bar -->
+      <div class="nav-controls no-drag">
+        <!-- Always on Top -->
+        <button class="nav-btn tooltip" id="btnPin" data-tip="Always on Top">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 17v5M9 2h6l1 7h-8zM7 9h10v3H7z"/></svg>
+        </button>
+
+        <!-- Mini Floating Island Mode -->
+        <button class="nav-btn tooltip" id="btnMini" data-tip="Floating Mini Island (Ctrl+Shift+M)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="13" width="18" height="8" rx="3"/><line x1="3" y1="8" x2="21" y2="8"/></svg>
+        </button>
+
+        <!-- Fullscreen Mode -->
+        <button class="nav-btn tooltip" id="btnFullscreen" data-tip="Fullscreen View (F11)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
+
+        <!-- Fullscreen Split-Layout Toggle (Only visible in Fullscreen) -->
+        <button class="nav-btn tooltip" id="btnSplitLayout" style="display: none;" data-tip="Toggle Split / Centered Layout">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+        </button>
+
+        <!-- 3-Way Lyrics View Mode Switcher -->
+        <button class="nav-btn active tooltip mode-switcher" id="btnViewMode" data-tip="Mode: Dual / Translation / Original (Ctrl+Shift+L)">
+          <span class="btn-text" id="viewModeText">DUAL</span>
+        </button>
+
+        <!-- Quick Tools & Settings Drawer Toggle -->
+        <button class="nav-btn tooltip" id="btnToolsToggle" data-tip="Tools & Preferences">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+
+        <div class="divider-vertical"></div>
+
+        <!-- Window Action Buttons -->
+        <button class="nav-btn win-icon" id="btnMin" title="Minimize">
+          <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button class="nav-btn win-icon close-btn" id="btnClose" title="Close">
+          <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Quick Settings Card Dropdown -->
+    <div class="settings-drawer" id="settingsDrawer" style="display: none;">
+      <div class="drawer-header">
+        <span>Preferences & Tools</span>
+        <button class="drawer-close" id="btnToolsClose">✕</button>
+      </div>
+
+      <!-- Theme Selector -->
+      <div class="setting-row">
+        <label>Aesthetic Theme</label>
+        <select id="selectTheme" class="select-box">
+          <option value="dynamic">Dynamic Mesh Aura</option>
+          <option value="oled">OLED Pure Black</option>
+          <option value="tokyo">Tokyo Night</option>
+          <option value="cyberpunk">Cyberpunk 2077</option>
+          <option value="nord">Nordic Frost</option>
+        </select>
+      </div>
+
+      <!-- Target Translation Language -->
+      <div class="setting-row">
+        <label>Translate Into</label>
+        <select id="selectLang" class="select-box">
+          <option value="en">English (EN)</option>
+          <option value="es">Spanish (ES)</option>
+          <option value="ar">Arabic (AR)</option>
+          <option value="fr">French (FR)</option>
+          <option value="de">German (DE)</option>
+          <option value="ja">Japanese (JA)</option>
+          <option value="ko">Korean (KO)</option>
+          <option value="pt">Portuguese (PT)</option>
+          <option value="ru">Russian (RU)</option>
+          <option value="zh">Chinese (ZH)</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label>Glass Opacity</label>
+        <input type="range" id="sliderOpacity" min="30" max="100" value="84" class="range-slider" />
+        <span class="setting-val" id="opacityVal">84%</span>
+      </div>
+
+      <div class="setting-row">
+        <label>Sync Nudge</label>
+        <div class="nudge-group">
+          <button class="nudge-btn" id="btnNudgeMinus">-0.2s</button>
+          <span class="nudge-val" id="nudgeOffsetVal">0.0s</span>
+          <button class="nudge-btn" id="btnNudgePlus">+0.2s</button>
+          <button class="nudge-btn reset" id="btnNudgeReset">Reset</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <label>Syllable Karaoke Sweep</label>
+        <input type="checkbox" id="checkSweep" class="toggle-checkbox" checked />
+      </div>
+
+      <div class="setting-row">
+        <label>Phonetics (Romaji/Romaja/Pinyin)</label>
+        <input type="checkbox" id="checkRomaji" class="toggle-checkbox" checked />
+      </div>
+
+      <div class="setting-row">
+        <label>Word Lookup Tooltip (Double-Click)</label>
+        <input type="checkbox" id="checkLearner" class="toggle-checkbox" checked />
+      </div>
+
+      <div class="setting-row">
+        <label>Discord Rich Presence</label>
+        <input type="checkbox" id="checkDiscord" class="toggle-checkbox" checked />
+      </div>
+
+      <div class="setting-row">
+        <label>Gamer Ghost Mode (Click-Through)</label>
+        <input type="checkbox" id="checkGhost" class="toggle-checkbox" />
+      </div>
+
+      <div class="setting-row">
+        <label>Sleep Timer</label>
+        <select id="selectSleep" class="select-box">
+          <option value="0">Off</option>
+          <option value="15">15 Minutes</option>
+          <option value="30">30 Minutes</option>
+          <option value="45">45 Minutes</option>
+          <option value="60">60 Minutes</option>
+        </select>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="setting-actions">
+        <div class="action-grid">
+          <button class="drawer-btn" id="btnHistoryOpen">🕒 Song History</button>
+          <button class="drawer-btn" id="btnVocabOpen">📚 Vocab Deck</button>
+        </div>
+        <div class="action-grid">
+          <button class="drawer-btn" id="btnCopyLine">📋 Copy Line</button>
+          <button class="drawer-btn" id="btnCopyAll">📄 Copy All</button>
+        </div>
+        <div class="action-grid">
+          <button class="drawer-btn" id="btnExportLrc">💾 Export .LRC</button>
+          <button class="drawer-btn" id="btnExportSrt">🎬 Export .SRT</button>
+        </div>
+        <button class="drawer-btn full-width" id="btnExportSheet">🖨️ Export Printable Lyric Poster (HTML)</button>
+      </div>
+
+      <!-- Global Windows Hotkeys Legend -->
+      <div class="hotkeys-box">
+        <div class="hotkeys-title">Global Shortcuts (Anywhere in Windows)</div>
+        <div class="hotkey-item"><kbd>Ctrl+Shift+G</kbd><span>Ghost Mode (Click-Through)</span></div>
+        <div class="hotkey-item"><kbd>Ctrl+Shift+M</kbd><span>Mini Island Overlay</span></div>
+        <div class="hotkey-item"><kbd>Ctrl+Shift+H</kbd><span>Boss Key (Hide / Show)</span></div>
+        <div class="hotkey-item"><kbd>Ctrl+Shift+L</kbd><span>Cycle Lyrics View Mode</span></div>
+        <div class="hotkey-item"><kbd>Ctrl+Shift+Space</kbd><span>Spotify Play / Pause</span></div>
+      </div>
+    </div>
+
+    <!-- Song History Modal Drawer -->
+    <div class="modal-overlay" id="historyModal" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span>Song History & Favorites</span>
+          <button class="modal-close" id="btnHistoryClose">✕</button>
+        </div>
+        <div class="modal-list" id="historyList"></div>
+      </div>
+    </div>
+
+    <!-- Vocabulary Deck Modal Drawer -->
+    <div class="modal-overlay" id="vocabModal" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <span>Vocabulary Notebook</span>
+          <div class="modal-header-actions">
+            <button class="pill-btn-sm" id="btnExportVocab">Export CSV</button>
+            <button class="modal-close" id="btnVocabClose">✕</button>
+          </div>
+        </div>
+        <div class="modal-list" id="vocabList"></div>
+      </div>
+    </div>
+
+    <!-- Floating Glass Dictionary Popup (Word Lookup & Pronunciation) -->
+    <div class="dict-card" id="dictCard" style="display: none;">
+      <div class="dict-top">
+        <div class="dict-word-info">
+          <span class="dict-word" id="dictWord">Word</span>
+          <span class="dict-romaji" id="dictRomaji">Romaji</span>
+        </div>
+        <div class="dict-actions">
+          <button class="dict-btn" id="btnDictSpeak" title="Pronounce word with natural audio">🔊</button>
+          <button class="dict-btn" id="btnDictSave" title="Save to Vocabulary Notebook">⭐</button>
+          <button class="dict-btn" id="btnDictCopy" title="Copy word & definition">📋</button>
+          <button class="dict-close" id="btnDictClose">✕</button>
+        </div>
+      </div>
+      <div class="dict-meaning" id="dictMeaning">Translation loading...</div>
+      <div class="dict-meta">
+        <span class="dict-lang" id="dictLang">Detected Language</span>
+        <span class="dict-hint">Right-click line to copy • Double-click word to define</span>
+      </div>
+    </div>
+
+    <!-- Normal / Fullscreen Content Container -->
+    <div class="main-body" id="mainBody">
+      
+      <!-- Track Header Card (Supports Mouse Wheel Volume) -->
+      <section class="track-card pywebview-drag-region" id="trackCard">
+        <div class="track-artwork-wrap">
+          <img class="track-artwork" id="trackArtwork" style="display: none;" alt="Album Cover" />
+          <div class="track-disc" id="trackDisc">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z"/></svg>
+          </div>
+        </div>
+
+        <div class="track-details">
+          <div class="track-title-row">
+            <div class="track-title" id="trackTitle">Connecting to Spotify...</div>
+            <button class="heart-btn no-drag tooltip" id="btnHeart" data-tip="Favorite song">♡</button>
+          </div>
+          <div class="track-artist" id="trackArtist">Play a song to begin sync</div>
+        </div>
+
+        <div class="sound-wave" id="soundWave">
+          <span class="wave-bar b1"></span>
+          <span class="wave-bar b2"></span>
+          <span class="wave-bar b3"></span>
+          <span class="wave-bar b4"></span>
+        </div>
+      </section>
+
+      <!-- Lyrics Scrolling Viewport -->
+      <main class="lyrics-viewport" id="lyricsViewport">
+        <!-- Instrumental Solo Countdown Pill -->
+        <div class="instrumental-pill" id="instrumentalPill" style="display: none;">
+          <span class="note-anim">♪</span>
+          <span id="instrumentalText">Instrumental Solo (0:12)</span>
+        </div>
+
+        <!-- Idle State -->
+        <div class="empty-state" id="idleState">
+          <div class="radar-halo">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+            </svg>
+          </div>
+          <h3>Spotify Companion Ready</h3>
+          <p>Play any song in Spotify. Synced karaoke lyrics, phonetic romanization, and real-time translations appear here automatically.</p>
+        </div>
+
+        <!-- Lyrics List -->
+        <div class="lyrics-list" id="lyricsList" style="display: none;"></div>
+
+        <!-- No Lyrics State -->
+        <div class="empty-state" id="noLyricsState" style="display: none;">
+          <p>No timestamped lyrics found for this song.</p>
+          <button class="pill-btn secondary" id="btnRetry">Search Again</button>
+        </div>
+      </main>
+
+      <!-- Bottom Player & Scrubber Bar -->
+      <footer class="player-dock" id="playerDock">
+        <!-- Progress Bar -->
+        <div class="scrub-container no-drag">
+          <span class="time-stamp" id="currentTime">0:00</span>
+          <div class="scrub-track" id="scrubTrack">
+            <div class="scrub-fill" id="scrubFill"></div>
+            <div class="scrub-handle" id="scrubHandle"></div>
+          </div>
+          <span class="time-stamp" id="totalTime">0:00</span>
+        </div>
+
+        <!-- Media Controls & Audio Spectrum -->
+        <div class="dock-lower no-drag">
+          <!-- Fluid Canvas Spectrum Visualizer -->
+          <canvas class="audio-spectrum" id="audioSpectrum" width="160" height="26"></canvas>
+
+          <div class="media-controls">
+            <button class="ctrl-btn" id="btnPrev" title="Previous Track">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+            </button>
+            <button class="ctrl-btn play-btn" id="btnPlayPause" title="Play / Pause">
+              <svg class="icon-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <svg class="icon-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            </button>
+            <button class="ctrl-btn" id="btnNext" title="Next Track">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+            </button>
+          </div>
+
+          <div class="vol-indicator" id="volIndicator" title="Mouse wheel over artwork to adjust volume">
+            <span>🔊</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Mode 2: Floating Dynamic Island Pill (Compact / Expandable Overlay) -->
+    <div class="floating-island pywebview-drag-region" id="floatingIsland" style="display: none;">
+      
+      <div class="island-top-row">
+        <div class="island-left">
+          <img class="island-artwork" id="islandArtwork" style="display: none;" alt="Cover" />
+          <div class="island-disc" id="islandDisc">
+            <span class="island-dot"></span>
+          </div>
+        </div>
+        
+        <div class="island-center">
+          <div class="island-single-line" id="islandSingleLine">
+            <div class="island-original" id="islandOriginal">Connecting...</div>
+            <div class="island-romaji" id="islandRomaji"></div>
+            <div class="island-translation" id="islandTranslation"></div>
+          </div>
+          <div class="island-header-info" id="islandHeaderInfo" style="display: none;">
+            <span class="island-song-title" id="islandSongTitle">Title</span>
+            <span class="island-song-artist" id="islandSongArtist">Artist</span>
+          </div>
+        </div>
+
+        <div class="island-right no-drag">
+          <button class="island-btn" id="btnIslandPlay" title="Play/Pause">
+            <svg class="island-icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <svg class="island-icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          </button>
+          <button class="island-btn" id="btnIslandNext" title="Next Track">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+          </button>
+          <button class="island-btn" id="btnIslandFold" title="Toggle Multi-line Lyrics">
+            <svg class="icon-unfold" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg class="icon-fold" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;"><polyline points="18 15 12 9 6 15"/></svg>
+          </button>
+          <button class="island-btn" id="btnIslandExpand" title="Expand to Full Window">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Expandable Multi-Line Lyrics Drawer in Floating Island Mode -->
+      <div class="island-drawer" id="islandDrawer" style="display: none;">
+        <div class="island-lyrics-scroll" id="islandLyricsScroll"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
