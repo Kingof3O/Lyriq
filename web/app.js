@@ -3075,7 +3075,7 @@
     var opts = options || {};
     var next = Boolean(fullscreen);
     if (next === AppState.isFullscreen) return;
-    if (next && AppState.isMini) setMiniMode(false, { persist: false, backend: true });
+    if (next && AppState.isMini) setMiniMode(false, { persist: false, backend: false });
     AppState.isFullscreen = next;
     el.body.classList.toggle('mode-fullscreen', next);
     el.btnFullscreen.setAttribute('aria-pressed', String(next));

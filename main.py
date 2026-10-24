@@ -789,7 +789,7 @@ class SpotifyLyricsApp:
         width, height = window_state.clamp_size(
             geometry.get("width"), geometry.get("height")
         )
-        if width > 0 and height > 0:
+        if width >= window_state.MIN_WIDTH and height >= window_state.MIN_HEIGHT:
             geometry["width"] = width
             geometry["height"] = height
             with self._geometry_lock:
@@ -944,14 +944,20 @@ class SpotifyLyricsApp:
         else:
             self._pending_mini = False
             geometry = dict(self._normal_geometry)
+            width, height = window_state.clamp_size(
+                geometry.get("width"), geometry.get("height")
+            )
+            geometry["width"] = width
+            geometry["height"] = height
+            with self._geometry_lock:
+                self._normal_geometry["width"] = width
+                self._normal_geometry["height"] = height
             if self.window and self._window_is_shown():
                 try:
                     x, y = geometry.get("x"), geometry.get("y")
                     if x is not None and y is not None:
                         self.window.move(int(x), int(y))
-                    self.window.resize(
-                        int(geometry["width"]), int(geometry["height"])
-                    )
+                    self.window.resize(width, height)
                 except Exception as exc:
                     logger.warning("Could not restore the normal window size: %s", exc)
 
@@ -984,10 +990,12 @@ class SpotifyLyricsApp:
         enabled = bool(enabled)
         if enabled == self._is_fullscreen:
             return
-        if enabled and self._is_mini:
-            self.set_mini_mode(False)
         if enabled:
-            self._capture_normal_geometry()
+            if self._is_mini:
+                self._is_mini = False
+                self._pending_mini = False
+            else:
+                self._capture_normal_geometry()
         self._is_fullscreen = enabled
         self._ignore_geometry_for()
         if self.window and self._window_is_shown():
@@ -997,6 +1005,16 @@ class SpotifyLyricsApp:
                 logger.warning("Could not toggle fullscreen: %s", exc)
         else:
             self._pending_fullscreen = enabled
+
+        if not enabled and self.window and self._window_is_shown() and not self._is_mini:
+            try:
+                width, height = window_state.clamp_size(
+                    self._normal_geometry.get("width"),
+                    self._normal_geometry.get("height"),
+                )
+                self.window.resize(width, height)
+            except Exception as exc:
+                logger.warning("Could not restore window size after fullscreen: %s", exc)
 
         if enabled:
             view_mode = "fullscreen"

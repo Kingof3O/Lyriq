@@ -19,7 +19,7 @@ logger = logging.getLogger("WindowState")
 DEFAULT_WIDTH = 480
 DEFAULT_HEIGHT = 720
 MIN_WIDTH = 360
-MIN_HEIGHT = 85
+MIN_HEIGHT = 420
 DEFAULT_MINI_WIDTH = 560
 MIN_MINI_WIDTH = 420
 MAX_MINI_WIDTH = 1400
@@ -57,14 +57,14 @@ def _as_int(value, default=None):
 
 
 def clamp_size(width, height):
-    """Return a usable window size, falling back to the app defaults."""
+    """Return a usable normal window size, falling back to the app defaults."""
     width = _as_int(width, DEFAULT_WIDTH)
     height = _as_int(height, DEFAULT_HEIGHT)
-    if width <= 0:
+    if width is None or width < MIN_WIDTH:
         width = DEFAULT_WIDTH
-    if height <= 0:
+    if height is None or height < MIN_HEIGHT:
         height = DEFAULT_HEIGHT
-    return max(MIN_WIDTH, width), max(MIN_HEIGHT, height)
+    return width, height
 
 
 def clamp_mini_width(width):
