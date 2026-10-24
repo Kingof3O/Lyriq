@@ -1,6 +1,6 @@
 /* ============================================================================
-   Spotify Realtime Lyrics — application state, rendering and IPC
-   Vanilla JS, single animation loop, one source of truth (AppState).
+   Spotify Realtime Lyrics - application state, rendering and IPC
+   Modular source files live under web/js/ - DO NOT EDIT MANUALLY
    ========================================================================== */
 (function () {
   'use strict';
@@ -3816,7 +3816,7 @@
   // Interaction wiring
   // ---------------------------------------------------------------------------
 
-  function wireEvents() {
+  function wireButtonActions() {
     // Playback
     el.btnPlayPause.addEventListener('click', function () { callApi('play_pause'); });
     el.btnMiniPlay.addEventListener('click', function () { callApi('play_pause'); });
@@ -4066,8 +4066,12 @@
     });
     el.ctxCopy.addEventListener('click', copyContextLine);
     el.ctxEdit.addEventListener('click', editContextLine);
+  }
+  // ---------------------------------------------------------------------------
+  // Interaction wiring: scrubber bar
+  // ---------------------------------------------------------------------------
 
-    // Scrubber
+  function wireScrubber() {
     var scrubValue = 0;
     var scrubbing = false;
     function scrubFromEvent(event) {
@@ -4156,7 +4160,12 @@
         if (AppState.isPlaying) ensureFrame();
       });
     }
+  }
+  // ---------------------------------------------------------------------------
+  // Interaction wiring: keyboard shortcuts and global window events
+  // ---------------------------------------------------------------------------
 
+  function wireShortcuts() {
     // Global keyboard
     document.addEventListener('keydown', function (event) {
       if (event.key === 'F11') {
@@ -4258,6 +4267,11 @@
     showToast(delta > 0 ? 'Volume up' : 'Volume down', { icon: 'volume', duration: 1500 });
   }
 
+  function wireEvents() {
+    wireButtonActions();
+    wireScrubber();
+    wireShortcuts();
+  }
   // ---------------------------------------------------------------------------
   // Init and global hooks
   // ---------------------------------------------------------------------------

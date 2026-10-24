@@ -1,0 +1,47 @@
+  // ---------------------------------------------------------------------------
+  // Central state
+  // ---------------------------------------------------------------------------
+
+  var AppState = {
+    track: { title: '', artist: '', album: '', thumbnail: '', duration: 0 },
+    lyrics: [],
+    activeIndex: -1,
+    isPlaying: false,
+    basePositionMs: 0,
+    baseTimestamp: 0,
+    playbackRate: 1,
+    duration: 0,
+    isSynced: true,
+    provider: '',
+    language: 'unknown',
+    settings: {},
+    offset: 0,
+    lyricViewMode: 'both',
+    themeChoice: 'system',
+    resolvedTheme: 'dark',
+    lowPower: false,
+    fontScale: 1,
+    favorite: false,
+    wordLookup: true,
+    sweep: true,
+    romanization: true,
+    isMini: false,
+    isMiniExpanded: false,
+    isSquare: false,
+    squareSize: 420,
+    isFullscreen: false,
+    isSplit: false,
+    pinned: false,
+    ghost: false,
+    discord: true,
+    hasTrack: false,
+    preview: null,
+    accentRgb: [138, 180, 248],
+    lastThumbnail: '',
+    skeletonTimer: null,
+    translationTimer: null,
+    userScrollUntil: 0,
+    rafId: null,
+    isScrubbing: false
+  };
+

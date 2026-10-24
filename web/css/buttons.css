@@ -1,0 +1,165 @@
+.heart-btn {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  color: var(--text-3);
+}
+
+.heart-btn:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.heart-btn.active {
+  color: var(--danger);
+}
+
+.top-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text-2);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.badge .icon {
+  width: 11px;
+  height: 11px;
+}
+
+.lang-badge {
+  color: var(--text);
+}
+
+.provider-badge {
+  color: var(--accent-text);
+  border-color: var(--accent-glow);
+  background: var(--accent-soft);
+}
+
+.unsynced-badge {
+  color: var(--warn);
+  border-color: rgba(251, 191, 36, 0.28);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.ghost-badge {
+  color: var(--danger);
+  border-color: rgba(248, 113, 113, 0.3);
+  background: var(--danger-soft);
+}
+
+.timer-badge {
+  color: var(--accent-text);
+  cursor: pointer;
+}
+
+.timer-badge:hover {
+  background: var(--surface-active);
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.spinner {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--text-3);
+  border-top-color: var(--accent-text);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.top-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, transform 0.18s var(--ease);
+}
+
+.icon-btn:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.icon-btn.active,
+.icon-btn[aria-pressed="true"] {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: var(--accent-glow);
+}
+
+.heart-btn.active {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: rgba(248, 113, 113, 0.24);
+}
+
+.icon-btn.small {
+  width: 26px;
+  height: 26px;
+}
+
+.icon-btn.small .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.window-btn:hover {
+  background: var(--surface-active);
+}
+
+.close-btn:hover {
+  color: #fff;
+  background: #dc2626;
+  border-color: transparent;
+}
+

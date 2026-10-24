@@ -1,0 +1,138 @@
+/* --------------------------------------------------------------------------
+   Command palette
+   -------------------------------------------------------------------------- */
+
+.palette-overlay {
+  align-items: flex-start;
+  padding-top: 11vh;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.palette {
+  width: min(620px, calc(100vw - 24px));
+  background: var(--surface-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+  animation: modal-in 0.18s var(--ease) both;
+}
+
+.palette-input-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 50px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-3);
+}
+
+.palette-input-row .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.palette-input-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.palette-input-row input::placeholder {
+  color: var(--text-3);
+}
+
+.palette-list {
+  max-height: min(420px, 52vh);
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.palette-item:hover,
+.palette-item.is-active {
+  border-color: var(--border);
+  background: var(--surface-hover);
+}
+
+.palette-item .palette-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  border-radius: 7px;
+  background: var(--surface-hover);
+  color: var(--text-2);
+}
+
+.palette-item.is-active .palette-icon {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+
+.palette-icon .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.palette-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.palette-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.palette-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-3);
+  font-size: 9.5px;
+}
+
+.palette-empty {
+  padding: 30px 16px;
+  color: var(--text-3);
+  font-size: 11px;
+  text-align: center;
+}
+
+.palette-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: 9px;
+}
+

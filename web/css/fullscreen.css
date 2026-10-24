@@ -1,0 +1,137 @@
+/* --------------------------------------------------------------------------
+   Fullscreen
+   -------------------------------------------------------------------------- */
+
+body.mode-fullscreen .topbar,
+body.mode-fullscreen .player-dock {
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+body.mode-fullscreen.chrome-hidden .topbar {
+  opacity: 0;
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+
+body.mode-fullscreen.chrome-hidden .player-dock {
+  opacity: 0;
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+body.mode-fullscreen.chrome-hidden .topbar:focus-within,
+body.mode-fullscreen.chrome-hidden .player-dock:focus-within {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+body.mode-fullscreen .lyrics-scroll {
+  padding-top: 12vh;
+  padding-bottom: 34vh;
+}
+
+body.mode-fullscreen .lyrics-list {
+  max-width: 960px;
+}
+
+.fullscreen-stage {
+  display: none;
+}
+
+body.mode-fullscreen.layout-split .workspace {
+  flex-direction: row;
+  gap: 22px;
+  padding: 16px 22px 0;
+}
+
+body.mode-fullscreen.layout-split .fullscreen-stage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  width: 38%;
+  min-width: 250px;
+  max-width: 520px;
+  padding: 8px 0 16px;
+}
+
+.stage-art-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  box-shadow: var(--shadow-2);
+}
+
+.stage-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stage-disc {
+  color: var(--accent-text);
+}
+
+.stage-disc .icon {
+  width: 54px;
+  height: 54px;
+}
+
+.stage-meta {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text-3);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.stage-title {
+  font-size: clamp(20px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.stage-artist {
+  margin-top: 5px;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stage-album {
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.stage-tags {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+body.mode-fullscreen.layout-split .lyrics-pane {
+  flex: 1 1 auto;
+}
+
+body.mode-fullscreen.layout-split .lyrics-scroll {
+  padding: 10px 6px 24vh;
+}
+
+body.mode-fullscreen.layout-split .lyrics-list {
+  max-width: 760px;
+}
+

@@ -1,0 +1,113 @@
+/* --------------------------------------------------------------------------
+   Select (custom listbox)
+   -------------------------------------------------------------------------- */
+
+.select {
+  position: relative;
+  width: 100%;
+}
+
+.select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-hover);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.select-trigger:hover {
+  border-color: var(--border-strong);
+}
+
+.select-trigger[aria-expanded="true"] {
+  border-color: var(--accent-glow);
+}
+
+.select-trigger .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-3);
+}
+
+.select-popover {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  max-height: 270px;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+
+.select-search {
+  flex: 0 0 auto;
+  padding: 4px 4px 6px;
+}
+
+.select-search input {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: 0;
+  background: var(--surface-hover);
+  color: var(--text);
+  font-size: 10.5px;
+}
+
+.select-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.select-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 10.5px;
+  text-align: left;
+}
+
+.select-option:hover,
+.select-option:focus-visible,
+.select-option.is-active {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.select-option[aria-selected="true"] {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+
+.select-option .icon {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+}
+

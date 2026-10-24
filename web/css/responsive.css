@@ -1,0 +1,229 @@
+/* --------------------------------------------------------------------------
+   Scrollbars
+   -------------------------------------------------------------------------- */
+
+.scrub-track,
+.palette-list,
+.sheet-body,
+.modal-body,
+.select-list,
+.mini-drawer {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+/* --------------------------------------------------------------------------
+   Motion preferences and low power
+   -------------------------------------------------------------------------- */
+
+body.low-power *,
+body.low-power *::before,
+body.low-power *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+body.low-power .lyrics-scroll,
+body.low-power .mini-drawer {
+  scroll-behavior: auto;
+}
+
+body.low-power .playing-indicator,
+body.low-power .live-bars {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .brand-name {
+    display: none;
+  }
+
+  #trackAlbum,
+  #subSep {
+    display: none;
+  }
+
+  .lyrics-scroll {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .lyric-line {
+    padding-right: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    gap: 6px;
+    padding-right: 7px;
+    padding-left: 7px;
+  }
+
+  .brand {
+    display: none;
+  }
+
+  .np-art-wrap {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .top-actions {
+    gap: 0;
+  }
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .window-btn {
+    width: 26px;
+  }
+
+  .top-divider,
+  .ghost-badge,
+  .status-chip span:last-child {
+    display: none;
+  }
+
+  .status-chip {
+    width: 9px;
+  }
+
+  .badge {
+    padding: 0 5px;
+  }
+
+  .dock-left .dock-chip span:first-child {
+    display: none;
+  }
+
+  .dock-chip {
+    padding: 0 6px;
+  }
+
+  .search-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .search-form .btn {
+    width: 100%;
+    grid-column: 1 / -1;
+  }
+
+  .duration-field {
+    display: none !important;
+  }
+
+  .sheet {
+    width: 100vw;
+    border-left: 0;
+  }
+
+  body.mode-fullscreen.layout-split .fullscreen-stage {
+    display: none;
+  }
+
+  body.mode-fullscreen.layout-split .workspace {
+    padding: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .top-badges .lang-badge,
+  .top-badges .provider-badge {
+    display: none;
+  }
+
+  .lyrics-scroll {
+    padding-top: 5vh;
+  }
+
+  .line-original {
+    font-size: calc(19px * var(--font-scale));
+  }
+
+  .lyric-line.active .line-original {
+    font-size: calc(28px * var(--font-scale));
+  }
+
+  .line-translation {
+    font-size: calc(15px * var(--font-scale));
+  }
+
+  .dock-chip {
+    display: none;
+  }
+}
+
+@media (max-height: 520px) {
+  :root {
+    --topbar-h: 48px;
+    --dock-h: 48px;
+  }
+
+  .np-art-wrap {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+  }
+
+  .lyrics-scroll {
+    padding-top: 4vh;
+    padding-bottom: 16vh;
+  }
+
+  .lyric-line {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .lyric-line.active .line-original {
+    font-size: calc(25px * var(--font-scale));
+  }
+}
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .topbar,
+  .player-dock,
+  .album-backdrop,
+  .overlay,
+  .toast-container,
+  .mini-bar {
+    display: none !important;
+  }
+
+  .lyrics-scroll {
+    overflow: visible;
+    padding: 0;
+  }
+
+  .lyric-line {
+    opacity: 1 !important;
+    transform: none !important;
+    color: #111 !important;
+  }
+}
