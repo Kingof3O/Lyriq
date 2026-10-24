@@ -14,6 +14,7 @@ from lyrics_service import LyricsService
 from translator_service import TranslatorService
 from romanizer import Romanizer
 from discord_rpc import DiscordRPC
+from cache_service import get_cache
 
 class HotkeyThread(threading.Thread):
     def __init__(self, app):
@@ -263,6 +264,33 @@ class AppAPI:
                 }
         except Exception as e:
             return {"word": word, "trans": f"Lookup error: {e}", "romaji": "", "lang": "unknown"}
+
+    # Settings, per-song offsets & cache management
+    def get_settings(self):
+        """Returns every persisted setting (JSON-decoded by the cache)."""
+        return get_cache().get_settings()
+
+    def save_settings(self, values):
+        """Persists a mapping of settings. Unknown keys are kept as-is."""
+        if not isinstance(values, dict):
+            return False
+        return get_cache().set_settings(values)
+
+    def get_song_offset(self, artist, title):
+        """Returns the saved lyric offset in seconds for a track."""
+        return get_cache().get_song_offset(artist, title)
+
+    def set_song_offset(self, artist, title, offset):
+        """Saves the lyric offset in seconds for a track and returns it."""
+        return get_cache().set_song_offset(artist, title, offset)
+
+    def clear_cache(self):
+        """Clears lyrics/translation/thumbnail caches, keeping user data."""
+        return get_cache().clear_cache()
+
+    def get_cache_stats(self):
+        """Returns data directory, database size and cache row counts."""
+        return get_cache().get_cache_stats()
 
     # Song History & Favorites
     def toggle_favorite(self, artist, title):

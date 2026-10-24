@@ -3,13 +3,13 @@ import urllib.parse
 import urllib.request
 import json
 import logging
-from cache_service import CacheService
+from cache_service import get_cache
 
 logger = logging.getLogger("LyricsService")
 
 class LyricsService:
     def __init__(self):
-        self.cache = CacheService()
+        self.cache = get_cache()
         self.artist_trans_cache = {}
 
     def get_variations(self, artist: str, title: str) -> list:

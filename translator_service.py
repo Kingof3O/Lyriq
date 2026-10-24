@@ -2,7 +2,7 @@ import urllib.request
 import urllib.parse
 import json
 import logging
-from cache_service import CacheService
+from cache_service import get_cache
 from romanizer import Romanizer
 
 logger = logging.getLogger("TranslatorService")
@@ -10,7 +10,7 @@ logger = logging.getLogger("TranslatorService")
 class TranslatorService:
     def __init__(self, target_lang="en"):
         self.target_lang = target_lang
-        self.cache = CacheService()
+        self.cache = get_cache()
 
     def set_target_lang(self, lang: str):
         self.target_lang = lang or "en"
