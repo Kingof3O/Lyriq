@@ -107,6 +107,7 @@
     el.menuSearchLyrics.addEventListener('click', function () { closeOverflow(); openSearchModal(); });
     el.menuPalette.addEventListener('click', function () { closeOverflow(); openPalette(); });
     el.menuPin.addEventListener('click', function () { setPinned(!AppState.pinned, { announce: true }); syncMenuChecks(); });
+    if (el.btnDockPin) el.btnDockPin.addEventListener('click', function () { setPinned(!AppState.pinned, { announce: true }); syncMenuChecks(); });
     el.menuGhost.addEventListener('click', function () { setGhostMode(!AppState.ghost, { announce: true }); syncMenuChecks(); });
     el.menuLowPower.addEventListener('click', function () { setLowPower(!AppState.lowPower, { announce: true }); syncMenuChecks(); });
     el.menuDiscord.addEventListener('click', function () { setDiscord(!AppState.discord, { announce: true }); syncMenuChecks(); });

@@ -135,6 +135,10 @@
       el.btnSquarePin.setAttribute('aria-pressed', String(AppState.pinned));
       el.btnSquarePin.classList.toggle('active', AppState.pinned);
     }
+    if (el.btnDockPin) {
+      el.btnDockPin.setAttribute('aria-pressed', String(AppState.pinned));
+      el.btnDockPin.classList.toggle('is-pinned', AppState.pinned);
+    }
     if (opts.backend !== false) callApi('toggle_pin', AppState.pinned);
     if (opts.persist !== false) persistSettings({ always_on_top: AppState.pinned });
     if (opts.announce) showToast(AppState.pinned ? 'Always on top' : 'No longer on top', { icon: 'pin' });

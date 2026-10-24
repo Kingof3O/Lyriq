@@ -313,7 +313,6 @@
     scrollRailThumb: $('scrollRailThumb'),
     cornerNote: $('cornerNote'),
     btnDockPin: $('btnDockPin'),
-    btnDockMini: $('btnDockMini'),
     studyLens: $('studyLens'),
     btnStudyLensClose: $('btnStudyLensClose'),
     studyWord: $('studyWord'),
@@ -3585,6 +3584,10 @@
       el.btnSquarePin.setAttribute('aria-pressed', String(AppState.pinned));
       el.btnSquarePin.classList.toggle('active', AppState.pinned);
     }
+    if (el.btnDockPin) {
+      el.btnDockPin.setAttribute('aria-pressed', String(AppState.pinned));
+      el.btnDockPin.classList.toggle('is-pinned', AppState.pinned);
+    }
     if (opts.backend !== false) callApi('toggle_pin', AppState.pinned);
     if (opts.persist !== false) persistSettings({ always_on_top: AppState.pinned });
     if (opts.announce) showToast(AppState.pinned ? 'Always on top' : 'No longer on top', { icon: 'pin' });
@@ -4425,6 +4428,7 @@
     el.menuSearchLyrics.addEventListener('click', function () { closeOverflow(); openSearchModal(); });
     el.menuPalette.addEventListener('click', function () { closeOverflow(); openPalette(); });
     el.menuPin.addEventListener('click', function () { setPinned(!AppState.pinned, { announce: true }); syncMenuChecks(); });
+    if (el.btnDockPin) el.btnDockPin.addEventListener('click', function () { setPinned(!AppState.pinned, { announce: true }); syncMenuChecks(); });
     el.menuGhost.addEventListener('click', function () { setGhostMode(!AppState.ghost, { announce: true }); syncMenuChecks(); });
     el.menuLowPower.addEventListener('click', function () { setLowPower(!AppState.lowPower, { announce: true }); syncMenuChecks(); });
     el.menuDiscord.addEventListener('click', function () { setDiscord(!AppState.discord, { announce: true }); syncMenuChecks(); });

@@ -222,7 +222,6 @@
     scrollRailThumb: $('scrollRailThumb'),
     cornerNote: $('cornerNote'),
     btnDockPin: $('btnDockPin'),
-    btnDockMini: $('btnDockMini'),
     studyLens: $('studyLens'),
     btnStudyLensClose: $('btnStudyLensClose'),
     studyWord: $('studyWord'),
