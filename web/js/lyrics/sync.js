@@ -146,22 +146,22 @@
     }
     targetEl.replaceChildren(fragment);
 
-    var firstTop = spans[0].offsetTop;
-    var lastTop = spans[spans.length - 1].offsetTop;
-    if (Math.abs(lastTop - firstTop) < 6) {
+    var firstRect = spans[0].getBoundingClientRect();
+    var lastRect = spans[spans.length - 1].getBoundingClientRect();
+    if (Math.abs(lastRect.top - firstRect.top) < 8) {
       return [words.join(' ')];
     }
 
     var lines = [];
     var currentGroup = [];
-    var currentTop = firstTop;
+    var currentTop = firstRect.top;
 
     for (var i = 0; i < spans.length; i++) {
-      var top = spans[i].offsetTop;
-      if (Math.abs(top - currentTop) > 6) {
+      var r = spans[i].getBoundingClientRect();
+      if (Math.abs(r.top - currentTop) > 8) {
         if (currentGroup.length) lines.push(currentGroup.join('').trim());
         currentGroup = [spans[i].textContent.trim()];
-        currentTop = top;
+        currentTop = r.top;
       } else {
         currentGroup.push(spans[i].textContent);
       }

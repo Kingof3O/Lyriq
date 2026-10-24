@@ -25,7 +25,7 @@
     Object.keys(values || {}).forEach(function (key) { merged[key] = values[key]; });
     merged.theme = ['system', 'dark', 'light', 'oled'].indexOf(merged.theme) >= 0 ? merged.theme : 'system';
     merged.target_lang = LANG_NAMES[merged.target_lang] ? merged.target_lang : 'en';
-    merged.view_mode = ['card', 'mini', 'fullscreen'].indexOf(merged.view_mode) >= 0 ? merged.view_mode : 'card';
+    merged.view_mode = ['card', 'mini', 'square', 'fullscreen'].indexOf(merged.view_mode) >= 0 ? merged.view_mode : 'card';
     merged.lyrics_view_mode = LYRIC_VIEW_MODES.indexOf(merged.lyrics_view_mode) >= 0 ? merged.lyrics_view_mode : 'both';
     var scale = Number(merged.font_scale);
     merged.font_scale = isFinite(scale) ? clamp(scale, 0.85, 1.3) : 1;

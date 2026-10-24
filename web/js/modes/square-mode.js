@@ -1,3 +1,19 @@
+  
+  function toggleSquareBg() {
+    var enabled = !el.body.classList.contains('square-art-bg');
+    el.body.classList.toggle('square-art-bg', enabled);
+    try {
+      localStorage.setItem('lyriq_square_art_bg', enabled ? '1' : '0');
+    } catch (e) {}
+    showToast(enabled ? 'Square background: Album artwork' : 'Square background: Solid dark', { icon: 'disc' });
+  }
+
+  try {
+    if (localStorage.getItem('lyriq_square_art_bg') === '1') {
+      el.body.classList.add('square-art-bg');
+    }
+  } catch (e) {}
+
   function setSquareMode(square, options) {
     var opts = options || {};
     var next = Boolean(square);

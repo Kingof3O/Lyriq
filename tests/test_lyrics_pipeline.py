@@ -368,5 +368,40 @@ class RomanizerScriptDetectionTestCase(unittest.TestCase):
         self.assertIsInstance(Romanizer.romanize("你好"), str)
 
 
+class TranslatorServiceEndpointFallbackTestCase(unittest.TestCase):
+    def test_clients5_format_parsed_correctly(self):
+        ts = TranslatorService("en")
+        with mock.patch("urllib.request.urlopen") as mock_open:
+            mock_resp = mock.MagicMock()
+            mock_resp.status = 200
+            mock_resp.read.return_value = b'[["[[0]] Hello\\n[[1]] World", "ko"]]'
+            mock_resp.__enter__.return_value = mock_resp
+            mock_open.return_value = mock_resp
+
+            trans, romaji, lang = ts._request_translation("[[0]] \uc548\ub145\n[[1]] \uc138\uc0c1", 5.0)
+            self.assertEqual(trans, "[[0]] Hello\n[[1]] World")
+            self.assertEqual(lang, "ko")
+
+    def test_mymemory_fallback_when_google_fails(self):
+        ts = TranslatorService("en")
+        with mock.patch("urllib.request.urlopen") as mock_open:
+            # First 2 calls (clients5 and gtx) raise exceptions; 3rd call (MyMemory) succeeds
+            call_count = 0
+            def side_effect(*args, **kwargs):
+                nonlocal call_count
+                call_count += 1
+                if call_count < 3:
+                    raise Exception("HTTP 429 Too Many Requests")
+                mock_resp = mock.MagicMock()
+                mock_resp.status = 200
+                mock_resp.read.return_value = b'{"responseData": {"translatedText": "Bye Bye"}}'
+                mock_resp.__enter__.return_value = mock_resp
+                return mock_resp
+
+            mock_open.side_effect = side_effect
+            trans, romaji, lang = ts._request_translation("안녕", 5.0)
+            self.assertEqual(trans, "Bye Bye")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -37,7 +37,7 @@
 
   window.applyPersistedViewMode = function () {
     var mode = AppState.settings.view_mode || 'card';
-    applyWindowMode(mode, { backend: true });
+    applyWindowMode(mode, { backend: false });
   };
 
   window.applyTheme = function (choice) { applyTheme(choice); };

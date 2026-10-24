@@ -11,6 +11,7 @@
 
     var targetWithSublines = node.querySelector('.has-sublines');
     if (targetWithSublines && targetWithSublines._sublines && targetWithSublines._sublines.length > 1) {
+      node.style.removeProperty('--line-progress');
       var sublines = targetWithSublines._sublines;
       for (var i = 0; i < sublines.length; i++) {
         var sub = sublines[i];

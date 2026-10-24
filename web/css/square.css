@@ -32,9 +32,9 @@ body.mode-square .square-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 32px;
-  flex: 0 0 32px;
-  padding: 0 10px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 0 14px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   user-select: none;
@@ -118,8 +118,8 @@ body.mode-square .lyrics-list {
 body.mode-square .square-footer {
   display: flex;
   flex-direction: column;
-  height: 42px;
-  flex: 0 0 42px;
+  height: 44px;
+  flex: 0 0 44px;
   background: var(--surface);
   border-top: 1px solid var(--border);
   position: relative;
@@ -287,3 +287,49 @@ body.mode-square .toast-container {
   width: min(340px, calc(100vw - 16px));
 }
 
+/* Auto-hide header and footer controls on idle in Square Mode */
+body.mode-square .square-header,
+body.mode-square .square-footer {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+body.mode-square:hover .square-header,
+body.mode-square:hover .square-footer,
+body.mode-square .square-header:focus-within,
+body.mode-square .square-footer:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.mode-square .square-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: linear-gradient(to bottom, rgba(11, 12, 16, 0.85) 0%, rgba(11, 12, 16, 0) 100%);
+  border-bottom: none;
+}
+
+body.mode-square .square-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: linear-gradient(to top, rgba(11, 12, 16, 0.85) 0%, rgba(11, 12, 16, 0) 100%);
+  border-top: none;
+}
+
+/* Square Mode Album Art Background Option */
+body.mode-square.square-art-bg .album-backdrop {
+  display: block !important;
+  opacity: 0.45 !important;
+  filter: blur(24px) saturate(135%) brightness(0.6) !important;
+}
+
+body.mode-square.square-art-bg .app-shell {
+  background: transparent !important;
+}

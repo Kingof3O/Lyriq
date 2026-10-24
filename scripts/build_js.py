@@ -43,6 +43,7 @@ MODULE_ORDER = [
     "playback/timer.js",
     # Modals & Dialogs
     "modals/history-modal.js",
+    "modals/queue-modal.js",
     "modals/vocab-modal.js",
     "modals/search-modal.js",
     "modals/cache-ops.js",

@@ -29,7 +29,7 @@ logger = logging.getLogger("Lyriq")
 APP_TITLE = "Lyriq"
 TRAY_TOOLTIP = "Lyriq"
 MINI_WIDTH = 560
-MINI_HEIGHT = 95
+MINI_HEIGHT = 54
 
 
 from hotkey_listener import HotkeyThread
@@ -75,7 +75,7 @@ class SpotifyLyricsApp:
         self.media_listener = None
         self.window = None
         self.hotkey_thread = None
-        self.discord_rpc = DiscordRPC()
+        self.discord_rpc = DiscordRPC(self.lyrics_service.cache.get_setting("discord_client_id", ""))
 
         self.start_minimized = bool(start_minimized)
         self.tray = None
@@ -231,7 +231,7 @@ class SpotifyLyricsApp:
             height=init_height,
             min_size=(init_min_w, init_min_h),
             frameless=True,
-            easy_drag=True,
+            easy_drag=False,
             on_top=geometry["always_on_top"],
             transparent=False,
             **window_kwargs,
@@ -344,7 +344,7 @@ class SpotifyLyricsApp:
         try:
             if self._pending_mini and self._is_mini and self.window:
                 self._pending_mini = False
-                self._update_native_min_size(window_state.MIN_MINI_WIDTH, 85)
+                self._update_native_min_size(window_state.MIN_MINI_WIDTH, 50)
                 curr_h = 270 if self._mini_expanded else MINI_HEIGHT
                 self.window.resize(self._mini_width, curr_h)
             if self._pending_square and self._is_square and self.window:
@@ -457,11 +457,11 @@ class SpotifyLyricsApp:
             timer.cancel()
 
     def _current_view_mode(self):
-        if self._is_fullscreen:
+        if getattr(self, "_is_fullscreen", False):
             return "fullscreen"
-        if self._is_mini:
+        if getattr(self, "_is_mini", False):
             return "mini"
-        if self._is_square:
+        if getattr(self, "_is_square", False):
             return "square"
         return "card"
 
@@ -474,20 +474,31 @@ class SpotifyLyricsApp:
 
     def _save_window_state(self, include_view_mode=True):
         geometry = self._geometry_snapshot()
-        width, height = window_state.clamp_size(
-            geometry.get("width"), geometry.get("height")
-        )
-        values = {"window_width": width, "window_height": height}
-        x = geometry.get("x")
-        y = geometry.get("y")
-        if x is not None and y is not None:
-            x, y = window_state.clamp_position(x, y, width, height)
-            values["window_x"] = x
-            values["window_y"] = y
-        with self._geometry_lock:
-            self._normal_geometry.update(
-                {"x": x, "y": y, "width": width, "height": height}
+        values = {}
+        is_mini = getattr(self, "_is_mini", False)
+        is_square = getattr(self, "_is_square", False)
+        is_fullscreen = getattr(self, "_is_fullscreen", False)
+
+        if is_mini:
+            values["mini_width"] = window_state.clamp_mini_width(geometry.get("width"))
+        elif is_square:
+            values["square_size"] = window_state.clamp_square_size(geometry.get("width"))
+        elif not is_fullscreen:
+            width, height = window_state.clamp_size(
+                geometry.get("width"), geometry.get("height")
             )
+            values["window_width"] = width
+            values["window_height"] = height
+            x = geometry.get("x")
+            y = geometry.get("y")
+            if x is not None and y is not None:
+                x, y = window_state.clamp_position(x, y, width, height)
+                values["window_x"] = x
+                values["window_y"] = y
+            with self._geometry_lock:
+                self._normal_geometry.update(
+                    {"x": x, "y": y, "width": width, "height": height}
+                )
         if include_view_mode:
             values["view_mode"] = self._current_view_mode()
             # Do not persist the in-memory fallback used when the tray failed.
@@ -535,7 +546,7 @@ class SpotifyLyricsApp:
             if self._is_square:
                 self._is_square = False
                 self._pending_square = False
-            self._update_native_min_size(window_state.MIN_MINI_WIDTH, 85)
+            self._update_native_min_size(window_state.MIN_MINI_WIDTH, 50)
             if self.window and self._window_is_shown():
                 try:
                     curr_h = 270 if self._mini_expanded else MINI_HEIGHT
@@ -971,6 +982,12 @@ class SpotifyLyricsApp:
             if current(translations):
                 self.evaluate_js(
                     f"window.updateTranslations({json.dumps(translations[1])})"
+                )
+
+            startup_mode = self._current_view_mode()
+            if startup_mode in ("square", "mini", "fullscreen"):
+                self.evaluate_js(
+                    f"window.applyWindowMode && window.applyWindowMode({json.dumps(startup_mode)}, {{backend: false}})"
                 )
 
             has_lyrics = (

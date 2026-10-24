@@ -52,21 +52,22 @@ body.mode-fullscreen.layout-split .fullscreen-stage {
   flex-direction: column;
   justify-content: center;
   gap: 18px;
-  width: 38%;
-  min-width: 250px;
-  max-width: 520px;
+  width: 45%;
+  min-width: 300px;
+  max-width: 480px;
   padding: 8px 0 16px;
 }
 
 .stage-art-wrap {
   position: relative;
   width: 100%;
+  max-width: 420px;
   aspect-ratio: 1;
-  border-radius: var(--radius-xl);
+  border-radius: 16px;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background: var(--surface-hover);
-  box-shadow: var(--shadow-2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
 }
 
 .stage-art {
@@ -99,18 +100,19 @@ body.mode-fullscreen.layout-split .fullscreen-stage {
 }
 
 .stage-title {
-  font-size: clamp(20px, 2.4vw, 30px);
-  font-weight: 800;
+  font-size: 28px;
+  font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.18;
+  line-height: 1.2;
+  color: #F8FAFC;
   overflow-wrap: anywhere;
 }
 
 .stage-artist {
-  margin-top: 5px;
-  color: var(--text-2);
-  font-size: 14px;
-  font-weight: 600;
+  margin-top: 6px;
+  color: #94A3B8;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .stage-album {

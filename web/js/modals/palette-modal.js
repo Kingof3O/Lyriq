@@ -32,7 +32,9 @@
     var commands = [
       { title: 'Open settings', sub: 'Preferences and tools', icon: 'settings', run: function () { openSettings('appearance'); } },
       { title: 'Search lyrics manually', sub: 'LRCLIB, NetEase and local LRC', icon: 'search', run: openSearchModal },
-      { title: 'Song history', sub: 'Preview songs you played', icon: 'history', run: openHistory },
+      { title: 'Liked songs', sub: 'View all songs you favorited', icon: 'heart-filled', run: function () { openHistory('liked'); } },
+      { title: 'Spotify queue', sub: 'View upcoming playback queue', icon: 'list', run: openQueue },
+      { title: 'Song history', sub: 'Preview songs you played', icon: 'history', run: function () { openHistory('all'); } },
       { title: 'Vocabulary notebook', sub: 'Saved words and definitions', icon: 'book', run: function () { openVocab(''); } },
       { title: 'Toggle mini mode', sub: 'Ctrl+Shift+M', icon: 'pip', run: function () { setMiniMode(!AppState.isMini); } },
       { title: 'Mini mode: Cycle width', sub: '560px → 760px → 960px', icon: 'pip', run: function () { cycleMiniWidth(); } },

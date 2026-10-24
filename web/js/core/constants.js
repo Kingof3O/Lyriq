@@ -33,5 +33,5 @@
   };
 
   var LYRIC_VIEW_MODES = ['both', 'trans-only', 'orig-only'];
-  var LYRIC_VIEW_LABELS = { 'both': 'DUAL', 'trans-only': 'TRANS', 'orig-only': 'ORIG' };
+  var LYRIC_VIEW_LABELS = { 'both': 'DUAL', 'trans-only': 'TRANSLATION', 'orig-only': 'ORIGINAL' };
 

@@ -93,15 +93,45 @@
       }
     });
 
+        if (el.sliderVolume) {
+      el.sliderVolume.addEventListener('input', function () {
+        var val = Number(el.sliderVolume.value);
+        if (el.volumeLabel) el.volumeLabel.textContent = val + '%';
+        updateSliderFill(el.sliderVolume);
+        callApi('set_volume', val);
+      });
+      callApi('get_volume').then(function (res) {
+        if (res && typeof res.volume === 'number') {
+          updateVolumeUi(res.volume);
+        }
+      });
+    }
     initMiniResize();
     initSquareResize();
+  }
+
+  function updateVolumeUi(volume) {
+    if (typeof volume !== 'number') return;
+    if (el.sliderVolume) {
+      el.sliderVolume.value = String(volume);
+      updateSliderFill(el.sliderVolume);
+    }
+    if (el.volumeLabel) el.volumeLabel.textContent = volume + '%';
   }
 
   function handleWheelVolume(event) {
     event.preventDefault();
     var delta = event.deltaY < 0 ? 1 : -1;
-    callApi('adjust_volume', delta);
-    showToast(delta > 0 ? 'Volume up' : 'Volume down', { icon: 'volume', duration: 1500 });
+    callApi('adjust_volume', delta).then(function (res) {
+      if (res && res.target === 'spotify' && typeof res.volume === 'number') {
+        updateVolumeUi(res.volume);
+        showToast('Spotify ' + res.volume + '%', { icon: 'volume', duration: 1200 });
+      } else {
+        showToast(delta > 0 ? 'Volume up' : 'Volume down', { icon: 'volume', duration: 1200 });
+      }
+    }).catch(function () {
+      showToast(delta > 0 ? 'Volume up' : 'Volume down', { icon: 'volume', duration: 1200 });
+    });
   }
 
   function wireEvents() {

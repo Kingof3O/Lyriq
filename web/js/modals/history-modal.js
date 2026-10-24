@@ -4,10 +4,26 @@
 
   var historyData = [];
   var historyLoaded = false;
+  var currentHistoryFilter = 'all';
   var vocabData = [];
   var vocabLoaded = false;
 
-  function openHistory() {
+  function updateHistoryFilterUi() {
+    var btnAll = $('btnHistoryAll');
+    var btnLiked = $('btnHistoryLiked');
+    if (btnAll) btnAll.classList.toggle('active', currentHistoryFilter === 'all');
+    if (btnLiked) btnLiked.classList.toggle('active', currentHistoryFilter === 'liked');
+    var title = $('historyTitle');
+    if (title) title.textContent = currentHistoryFilter === 'liked' ? 'Liked songs' : 'Song history';
+    if (el.historySearch) {
+      el.historySearch.placeholder = currentHistoryFilter === 'liked' ? 'Search liked songs…' : 'Search songs…';
+    }
+  }
+
+  function openHistory(filter) {
+    if (filter === 'liked') currentHistoryFilter = 'liked';
+    else if (filter === 'all') currentHistoryFilter = 'all';
+    updateHistoryFilterUi();
     closeSettings();
     closeOverflow();
     historyLoaded = false;
@@ -36,11 +52,13 @@
     }
     var query = el.historySearch.value.trim().toLowerCase();
     var items = historyData.filter(function (item) {
+      if (currentHistoryFilter === 'liked' && !item.is_favorite) return false;
       if (!query) return true;
       return [item.title, item.artist, item.album].join(' ').toLowerCase().indexOf(query) >= 0;
     });
     if (!items.length) {
-      el.historyList.replaceChildren(modalEmpty('history', query ? 'No songs match this search.' : 'No song history yet. Play something in Spotify.'));
+      var emptyMsg = query ? 'No songs match this search.' : (currentHistoryFilter === 'liked' ? 'No liked songs yet. Click the heart icon on any song to add it here.' : 'No song history yet. Play something in Spotify.');
+      el.historyList.replaceChildren(modalEmpty('history', emptyMsg));
       return;
     }
     var fragment = document.createDocumentFragment();
@@ -120,3 +138,5 @@
     showToast('Returning to live lyrics', { icon: 'arrow-left' });
   }
 
+
+  window.openHistory = openHistory;

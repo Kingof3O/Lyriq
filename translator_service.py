@@ -313,36 +313,76 @@ class TranslatorService:
 
     def _request_translation(self, text: str, timeout: float) -> tuple:
         """Return (translated_text, romaji_text, detected_lang) for one request."""
-        params = {
-            "client": "gtx",
-            "sl": "auto",
-            "tl": self.target_lang,
-            "dt": ["t", "rm"],
-            "q": text
-        }
-        url = TRANSLATE_ENDPOINT + "?" + urllib.parse.urlencode(params, doseq=True)
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-        )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            if resp.status != 200:
-                return "", "", "unknown"
-            data = json.loads(resp.read().decode("utf-8"))
+        # 1. Primary: clients5.google.com (dict-chrome-ex) - fast, resilient, not rate-limited
+        try:
+            url = f"https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl={self.target_lang}&q={urllib.parse.quote(text)}"
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    if data and isinstance(data, list) and len(data) > 0:
+                        if isinstance(data[0], list) and len(data[0]) > 0:
+                            trans = data[0][0] if isinstance(data[0][0], str) else ""
+                            lang = data[0][1] if len(data[0]) > 1 and isinstance(data[0][1], str) else "unknown"
+                            if trans:
+                                return trans.strip(), "", lang
+        except Exception as exc:
+            logger.debug(f"clients5 translation request error: {exc}")
 
-        trans_parts = []
-        romaji_parts = []
-        if data and len(data) > 0 and isinstance(data[0], list):
-            for seg in data[0]:
-                if seg and len(seg) > 0 and isinstance(seg[0], str):
-                    trans_parts.append(seg[0])
-                elif seg and len(seg) > 3 and seg[0] is None and isinstance(seg[3], str):
-                    romaji_parts.append(seg[3])
+        # 2. Secondary: translate.googleapis.com (gtx)
+        try:
+            params = {
+                "client": "gtx",
+                "sl": "auto",
+                "tl": self.target_lang,
+                "dt": ["t", "rm"],
+                "q": text
+            }
+            url = TRANSLATE_ENDPOINT + "?" + urllib.parse.urlencode(params, doseq=True)
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    trans_parts = []
+                    romaji_parts = []
+                    if data and len(data) > 0 and isinstance(data[0], list):
+                        for seg in data[0]:
+                            if seg and len(seg) > 0 and isinstance(seg[0], str):
+                                trans_parts.append(seg[0])
+                            elif seg and len(seg) > 3 and seg[0] is None and isinstance(seg[3], str):
+                                romaji_parts.append(seg[3])
+                    translated_str = "".join(trans_parts).strip()
+                    romaji_str = "\n".join(part.strip() for part in romaji_parts if part.strip())
+                    lang = data[2] if len(data) > 2 and isinstance(data[2], str) else "unknown"
+                    if translated_str:
+                        return translated_str, romaji_str, lang
+        except Exception as exc:
+            logger.debug(f"gtx translation request error: {exc}")
 
-        translated_str = "".join(trans_parts).strip()
-        romaji_str = "\n".join(part.strip() for part in romaji_parts if part.strip())
-        lang = data[2] if len(data) > 2 and isinstance(data[2], str) else "unknown"
-        return translated_str, romaji_str, lang
+        # 3. Tertiary fallback: MyMemory Translation API
+        try:
+            url = f"https://api.mymemory.translated.net/get?q={urllib.parse.quote(text)}&langpair=autodetect|{self.target_lang}"
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    res_data = data.get("responseData") or {}
+                    trans = res_data.get("translatedText") or ""
+                    if trans and not trans.startswith("MYMEMORY WARNING"):
+                        return trans.strip(), "", "unknown"
+        except Exception as exc:
+            logger.debug(f"MyMemory translation request error: {exc}")
+
+        return "", "", "unknown"
 
     # ------------------------------------------------------------------
     # Pure marker parser (unit-testable, no network)

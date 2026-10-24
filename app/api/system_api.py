@@ -28,3 +28,20 @@ class SystemAPIMixin:
         self._app.discord_rpc.enabled = bool(enabled)
         if not enabled:
             self._app.discord_rpc.clear()
+
+    def set_discord_client_id(self, client_id):
+        """Updates Discord RPC client ID and saves to settings."""
+        self._app.discord_rpc.set_client_id(client_id)
+        self._app.lyrics_service.cache.save_setting("discord_client_id", str(client_id).strip())
+        return True
+
+    def open_external_url(self, url):
+        """Opens a web URL in the user's default system browser."""
+        import webbrowser
+        if url and (url.startswith("http://") or url.startswith("https://")):
+            try:
+                webbrowser.open(url)
+                return True
+            except Exception as exc:
+                logger.warning("Failed to open external url: %s", exc)
+        return False

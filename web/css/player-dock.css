@@ -18,19 +18,24 @@
 body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .player-dock {
   position: absolute;
   left: 50%;
-  bottom: 22px;
+  bottom: 0;
   transform: translateX(-50%);
-  width: min(720px, calc(100vw - 44px));
+  width: min(760px, calc(100vw - 32px));
   height: 64px;
-  padding: 0 16px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 18px;
-  background: rgba(15, 15, 20, 0.94);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.38);
-  backdrop-filter: blur(20px);
+  padding: 0 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: rgba(15, 17, 23, 0.94);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(24px);
   display: grid;
-  grid-template-columns: 170px 1fr 170px;
+  grid-template-columns: 160px 1fr 160px;
   align-items: center;
+  overflow: visible;
 }
 
 body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .dock-main {
@@ -39,12 +44,30 @@ body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .dock-main {
 
 body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .dock-progress {
   position: absolute;
-  left: 20px;
-  right: 20px;
-  bottom: 0;
+  left: 28px;
+  right: 28px;
+  top: 0;
   height: 2px;
   padding: 0;
-  background: #2A2A31;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px 2px 0 0;
+  transition: height 0.15s ease;
+  overflow: visible;
+}
+
+body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .dock-progress:hover {
+  height: 4px;
+}
+
+body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .dock-progress .scrub-track::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  bottom: -7px;
+  left: 0;
+  right: 0;
+  height: 16px;
+  cursor: pointer;
 }
 
 
@@ -213,4 +236,46 @@ body.is-playing .playing-indicator span:nth-child(3) { animation: bars 1.2s 0.24
 .play-btn .icon {
   width: 16px;
   height: 16px;
+}
+
+/* Dock Volume Control */
+.dock-volume {
+  display: flex;
+  align-items: center;
+  position: relative;
+  gap: 4px;
+}
+
+.volume-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  transition: width 0.22s var(--ease), opacity 0.18s var(--ease);
+}
+
+.dock-volume:hover .volume-slider-wrap,
+.dock-volume:focus-within .volume-slider-wrap,
+.dock-volume.is-open .volume-slider-wrap {
+  width: 140px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.volume-slider {
+  width: 96px;
+  height: 4px;
+  cursor: pointer;
+  -webkit-app-region: no-drag !important;
+}
+
+.volume-label {
+  font-size: 11px;
+  color: #94A3B8;
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
 }

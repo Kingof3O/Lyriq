@@ -40,7 +40,7 @@
   };
 
   var LYRIC_VIEW_MODES = ['both', 'trans-only', 'orig-only'];
-  var LYRIC_VIEW_LABELS = { 'both': 'DUAL', 'trans-only': 'TRANS', 'orig-only': 'ORIG' };
+  var LYRIC_VIEW_LABELS = { 'both': 'DUAL', 'trans-only': 'TRANSLATION', 'orig-only': 'ORIGINAL' };
 
   // ---------------------------------------------------------------------------
   // Central state
@@ -171,6 +171,9 @@
     btnPrev: $('btnPrev'),
     btnNext: $('btnNext'),
     btnVolume: $('btnVolume'),
+    dockVolume: $('dockVolume'),
+    sliderVolume: $('sliderVolume'),
+    volumeLabel: $('volumeLabel'),
     btnViewMode: $('btnViewMode'),
     viewModeText: $('viewModeText'),
     dockOffset: $('dockOffset'),
@@ -203,6 +206,9 @@
     btnSquarePin: $('btnSquarePin'),
     btnSquareExpand: $('btnSquareExpand'),
     btnSquareClose: $('btnSquareClose'),
+    btnSquareBgToggle: $('btnSquareBgToggle'),
+    btnHistoryAll: $('btnHistoryAll'),
+    btnHistoryLiked: $('btnHistoryLiked'),
     squareFooter: $('squareFooter'),
     squareScrubTrack: $('squareScrubTrack'),
     squareScrubFill: $('squareScrubFill'),
@@ -255,6 +261,16 @@
     btnCopyLine: $('btnCopyLine'),
     btnCopyAll: $('btnCopyAll'),
     // Modals
+    btnLikedOpen: $('btnLikedOpen'),
+    btnQueueOpen: $('btnQueueOpen'),
+    queueModal: $('queueModal'),
+    btnQueueClose: $('btnQueueClose'),
+    btnQueueRefresh: $('btnQueueRefresh'),
+    queueList: $('queueList'),
+    inputDiscordClientId: $('inputDiscordClientId'),
+    inputSpotifyToken: $('inputSpotifyToken'),
+    btnSaveSpotifyToken: $('btnSaveSpotifyToken'),
+    btnOpenSpotifyDev: $('btnOpenSpotifyDev'),
     historyModal: $('historyModal'),
     btnHistoryClose: $('btnHistoryClose'),
     historySearch: $('historySearch'),
@@ -471,7 +487,7 @@
     Object.keys(values || {}).forEach(function (key) { merged[key] = values[key]; });
     merged.theme = ['system', 'dark', 'light', 'oled'].indexOf(merged.theme) >= 0 ? merged.theme : 'system';
     merged.target_lang = LANG_NAMES[merged.target_lang] ? merged.target_lang : 'en';
-    merged.view_mode = ['card', 'mini', 'fullscreen'].indexOf(merged.view_mode) >= 0 ? merged.view_mode : 'card';
+    merged.view_mode = ['card', 'mini', 'square', 'fullscreen'].indexOf(merged.view_mode) >= 0 ? merged.view_mode : 'card';
     merged.lyrics_view_mode = LYRIC_VIEW_MODES.indexOf(merged.lyrics_view_mode) >= 0 ? merged.lyrics_view_mode : 'both';
     var scale = Number(merged.font_scale);
     merged.font_scale = isFinite(scale) ? clamp(scale, 0.85, 1.3) : 1;
@@ -901,22 +917,22 @@
     }
     targetEl.replaceChildren(fragment);
 
-    var firstTop = spans[0].offsetTop;
-    var lastTop = spans[spans.length - 1].offsetTop;
-    if (Math.abs(lastTop - firstTop) < 6) {
+    var firstRect = spans[0].getBoundingClientRect();
+    var lastRect = spans[spans.length - 1].getBoundingClientRect();
+    if (Math.abs(lastRect.top - firstRect.top) < 8) {
       return [words.join(' ')];
     }
 
     var lines = [];
     var currentGroup = [];
-    var currentTop = firstTop;
+    var currentTop = firstRect.top;
 
     for (var i = 0; i < spans.length; i++) {
-      var top = spans[i].offsetTop;
-      if (Math.abs(top - currentTop) > 6) {
+      var r = spans[i].getBoundingClientRect();
+      if (Math.abs(r.top - currentTop) > 8) {
         if (currentGroup.length) lines.push(currentGroup.join('').trim());
         currentGroup = [spans[i].textContent.trim()];
-        currentTop = top;
+        currentTop = r.top;
       } else {
         currentGroup.push(spans[i].textContent);
       }
@@ -1017,6 +1033,7 @@
 
     var targetWithSublines = node.querySelector('.has-sublines');
     if (targetWithSublines && targetWithSublines._sublines && targetWithSublines._sublines.length > 1) {
+      node.style.removeProperty('--line-progress');
       var sublines = targetWithSublines._sublines;
       for (var i = 0; i < sublines.length; i++) {
         var sub = sublines[i];
@@ -2094,10 +2111,26 @@
 
   var historyData = [];
   var historyLoaded = false;
+  var currentHistoryFilter = 'all';
   var vocabData = [];
   var vocabLoaded = false;
 
-  function openHistory() {
+  function updateHistoryFilterUi() {
+    var btnAll = $('btnHistoryAll');
+    var btnLiked = $('btnHistoryLiked');
+    if (btnAll) btnAll.classList.toggle('active', currentHistoryFilter === 'all');
+    if (btnLiked) btnLiked.classList.toggle('active', currentHistoryFilter === 'liked');
+    var title = $('historyTitle');
+    if (title) title.textContent = currentHistoryFilter === 'liked' ? 'Liked songs' : 'Song history';
+    if (el.historySearch) {
+      el.historySearch.placeholder = currentHistoryFilter === 'liked' ? 'Search liked songs…' : 'Search songs…';
+    }
+  }
+
+  function openHistory(filter) {
+    if (filter === 'liked') currentHistoryFilter = 'liked';
+    else if (filter === 'all') currentHistoryFilter = 'all';
+    updateHistoryFilterUi();
     closeSettings();
     closeOverflow();
     historyLoaded = false;
@@ -2126,11 +2159,13 @@
     }
     var query = el.historySearch.value.trim().toLowerCase();
     var items = historyData.filter(function (item) {
+      if (currentHistoryFilter === 'liked' && !item.is_favorite) return false;
       if (!query) return true;
       return [item.title, item.artist, item.album].join(' ').toLowerCase().indexOf(query) >= 0;
     });
     if (!items.length) {
-      el.historyList.replaceChildren(modalEmpty('history', query ? 'No songs match this search.' : 'No song history yet. Play something in Spotify.'));
+      var emptyMsg = query ? 'No songs match this search.' : (currentHistoryFilter === 'liked' ? 'No liked songs yet. Click the heart icon on any song to add it here.' : 'No song history yet. Play something in Spotify.');
+      el.historyList.replaceChildren(modalEmpty('history', emptyMsg));
       return;
     }
     var fragment = document.createDocumentFragment();
@@ -2210,6 +2245,136 @@
     showToast('Returning to live lyrics', { icon: 'arrow-left' });
   }
 
+
+  window.openHistory = openHistory;
+  // ---------------------------------------------------------------------------
+  // Spotify Queue Modal
+  // ---------------------------------------------------------------------------
+
+  var queueLoaded = false;
+
+  function openQueue() {
+    closeSettings();
+    closeOverflow();
+    if (el.historyModal) el.historyModal.hidden = true;
+    if (el.vocabModal) el.vocabModal.hidden = true;
+    if (el.queueModal) {
+      el.queueModal.hidden = false;
+      renderQueue();
+      var m = el.queueModal.querySelector('.modal');
+      if (m) m.focus();
+    }
+  }
+
+  function closeQueue() {
+    if (el.queueModal) el.queueModal.hidden = true;
+  }
+
+  function formatQueueDuration(seconds) {
+    if (!seconds || seconds < 0) return '--:--';
+    var mins = Math.floor(seconds / 60);
+    var secs = Math.floor(seconds % 60);
+    return mins + ':' + (secs < 10 ? '0' : '') + secs;
+  }
+
+  function renderQueue() {
+    if (!el.queueList) return;
+    el.queueList.replaceChildren(modalEmpty('music', 'Fetching Spotify queue…'));
+
+    if (!hasApi('get_spotify_queue')) {
+      el.queueList.replaceChildren(modalEmpty('alert', 'Queue API is not available in this build.'));
+      return;
+    }
+
+    callApi('get_spotify_queue').then(function (res) {
+      if (!res || !res.connected || !Array.isArray(res.items) || res.items.length === 0) {
+        var msg = (res && res.message) || 'No upcoming songs in the Spotify queue.';
+        var emptyWrap = document.createElement('div');
+        emptyWrap.className = 'empty-state';
+        emptyWrap.style.cssText = 'padding: 32px 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;';
+
+        var p = document.createElement('p');
+        p.className = 'empty-text';
+        p.style.cssText = 'color: #94A3B8; font-size: 13px; max-width: 320px; line-height: 1.5; margin: 0;';
+        p.textContent = msg;
+        emptyWrap.appendChild(p);
+
+        if (!res || !res.connected) {
+          var cfgBtn = document.createElement('button');
+          cfgBtn.className = 'btn btn-sm';
+          cfgBtn.style.cssText = 'margin-top: 8px; font-weight: 500;';
+          cfgBtn.innerHTML = '<svg class="icon"><use href="#icon-settings"></use></svg> Configure Spotify Token';
+          cfgBtn.addEventListener('click', function () {
+            closeQueue();
+            openSettings('playback');
+          });
+          emptyWrap.appendChild(cfgBtn);
+        }
+
+        el.queueList.replaceChildren(emptyWrap);
+        return;
+      }
+
+      var frag = document.createDocumentFragment();
+      res.items.forEach(function (item, idx) {
+        var row = document.createElement('div');
+        row.className = 'history-item';
+        row.style.cssText = 'display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; transition: background 0.15s ease; border-bottom: 1px solid rgba(255,255,255,0.04);';
+
+        var num = document.createElement('span');
+        num.style.cssText = 'color: #64748B; font-size: 11px; font-weight: 600; width: 18px; text-align: right; flex-shrink: 0;';
+        num.textContent = (idx + 1);
+        row.appendChild(num);
+
+        var art = document.createElement('div');
+        art.className = 'history-art';
+        art.style.cssText = 'width: 38px; height: 38px; border-radius: 6px; overflow: hidden; background: rgba(255,255,255,0.06); flex-shrink: 0; display: flex; align-items: center; justify-content: center;';
+        if (item.thumbnail) {
+          var img = document.createElement('img');
+          img.src = item.thumbnail;
+          img.alt = '';
+          img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+          art.appendChild(img);
+        } else {
+          art.innerHTML = '<svg class="icon" style="width: 18px; height: 18px; opacity: 0.4;"><use href="#icon-disc"></use></svg>';
+        }
+        row.appendChild(art);
+
+        var meta = document.createElement('div');
+        meta.style.cssText = 'flex: 1; min-width: 0;';
+        var t = document.createElement('div');
+        t.style.cssText = 'color: #F8FAFC; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+        t.textContent = item.title || 'Unknown Title';
+        var a = document.createElement('div');
+        a.style.cssText = 'color: #94A3B8; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;';
+        a.textContent = item.artist || 'Unknown Artist';
+        meta.appendChild(t);
+        meta.appendChild(a);
+        row.appendChild(meta);
+
+        if (item.duration_seconds) {
+          var dur = document.createElement('span');
+          dur.style.cssText = 'color: #64748B; font-size: 11px; flex-shrink: 0; font-variant-numeric: tabular-nums;';
+          dur.textContent = formatQueueDuration(item.duration_seconds);
+          row.appendChild(dur);
+        }
+
+        frag.appendChild(row);
+      });
+
+      el.queueList.replaceChildren(frag);
+    }).catch(function (err) {
+      el.queueList.replaceChildren(modalEmpty('alert', 'Error fetching queue: ' + (err.message || err)));
+    });
+  }
+
+  if (el.btnQueueClose) el.btnQueueClose.addEventListener('click', closeQueue);
+  if (el.btnQueueRefresh) el.btnQueueRefresh.addEventListener('click', renderQueue);
+  if (el.queueModal) {
+    el.queueModal.addEventListener('click', function (e) {
+      if (e.target === el.queueModal) closeQueue();
+    });
+  }
   function openVocab(query) {
     closeSettings();
     closeOverflow();
@@ -2816,7 +2981,9 @@
     var commands = [
       { title: 'Open settings', sub: 'Preferences and tools', icon: 'settings', run: function () { openSettings('appearance'); } },
       { title: 'Search lyrics manually', sub: 'LRCLIB, NetEase and local LRC', icon: 'search', run: openSearchModal },
-      { title: 'Song history', sub: 'Preview songs you played', icon: 'history', run: openHistory },
+      { title: 'Liked songs', sub: 'View all songs you favorited', icon: 'heart-filled', run: function () { openHistory('liked'); } },
+      { title: 'Spotify queue', sub: 'View upcoming playback queue', icon: 'list', run: openQueue },
+      { title: 'Song history', sub: 'Preview songs you played', icon: 'history', run: function () { openHistory('all'); } },
       { title: 'Vocabulary notebook', sub: 'Saved words and definitions', icon: 'book', run: function () { openVocab(''); } },
       { title: 'Toggle mini mode', sub: 'Ctrl+Shift+M', icon: 'pip', run: function () { setMiniMode(!AppState.isMini); } },
       { title: 'Mini mode: Cycle width', sub: '560px → 760px → 960px', icon: 'pip', run: function () { cycleMiniWidth(); } },
@@ -3638,6 +3805,22 @@
     left.addEventListener('dblclick', onDoubleClick);
   }
 
+  
+  function toggleSquareBg() {
+    var enabled = !el.body.classList.contains('square-art-bg');
+    el.body.classList.toggle('square-art-bg', enabled);
+    try {
+      localStorage.setItem('lyriq_square_art_bg', enabled ? '1' : '0');
+    } catch (e) {}
+    showToast(enabled ? 'Square background: Album artwork' : 'Square background: Solid dark', { icon: 'disc' });
+  }
+
+  try {
+    if (localStorage.getItem('lyriq_square_art_bg') === '1') {
+      el.body.classList.add('square-art-bg');
+    }
+  } catch (e) {}
+
   function setSquareMode(square, options) {
     var opts = options || {};
     var next = Boolean(square);
@@ -3878,6 +4061,8 @@
     if (AppState.settings.split_layout) setSplit(true, { persist: false });
   }
 
+  window.applyWindowMode = applyWindowMode;
+
   // ---------------------------------------------------------------------------
   // Settings sheet
   // ---------------------------------------------------------------------------
@@ -3922,6 +4107,64 @@
     if (next === 'playback') refreshStartupState();
   }
 
+  window.openSettings = openSettings;
+  window.closeSettings = closeSettings;
+
+  function wireSettingsIntegrations() {
+    var btnGithubRepo = $('btnGithubRepo');
+    if (btnGithubRepo) {
+      btnGithubRepo.addEventListener('click', function (e) {
+        e.preventDefault();
+        callApi('open_external_url', 'https://github.com/Kingof3O/Lyriq');
+      });
+    }
+    var btnCheckUpdates = $('btnCheckUpdates');
+    var updateStatusText = $('updateStatusText');
+    if (btnCheckUpdates) {
+      btnCheckUpdates.addEventListener('click', function () {
+        if (updateStatusText) updateStatusText.textContent = 'Checking GitHub for updates…';
+        fetch('https://api.github.com/repos/Kingof3O/Lyriq/releases/latest', { cache: 'no-store' })
+          .then(function (r) { if (!r.ok) throw new Error('Status ' + r.status); return r.json(); })
+          .then(function (data) {
+            var tag = (data && data.tag_name) || '';
+            if (tag && tag !== 'v3.0.0' && tag !== '3.0.0') {
+              if (updateStatusText) updateStatusText.innerHTML = '<span style="color:#C4B5FD">Update available: <b>' + escapeHtml(tag) + '</b>.</span> <a href="' + (data.html_url || 'https://github.com/Kingof3O/Lyriq/releases') + '" target="_blank" style="color:var(--brand);text-decoration:underline;">Download</a>';
+              showToast('Update available: ' + tag, { icon: 'download' });
+            } else {
+              if (updateStatusText) updateStatusText.textContent = 'Lyriq v3.0.0 is up to date.';
+              showToast('Lyriq is up to date', { icon: 'check' });
+            }
+          })
+          .catch(function () {
+            if (updateStatusText) updateStatusText.textContent = 'Lyriq v3.0.0 · Up to date (offline)';
+            showToast('Checked: running latest build v3.0.0', { icon: 'check' });
+          });
+      });
+    }
+    if (el.btnSaveSpotifyToken) {
+      el.btnSaveSpotifyToken.addEventListener('click', function () {
+        var token = (el.inputSpotifyToken && el.inputSpotifyToken.value.trim()) || '';
+        callApi('set_spotify_token', token).then(function () {
+          showToast('Spotify token saved', { icon: 'check' });
+        });
+      });
+    }
+    if (el.btnOpenSpotifyDev) {
+      el.btnOpenSpotifyDev.addEventListener('click', function () {
+        callApi('open_external_url', 'https://developer.spotify.com/dashboard');
+      });
+    }
+    if (el.inputDiscordClientId) {
+      el.inputDiscordClientId.addEventListener('change', function () {
+        var cid = el.inputDiscordClientId.value.trim();
+        callApi('set_discord_client_id', cid).then(function () {
+          showToast('Discord client ID updated', { icon: 'check' });
+        });
+      });
+    }
+  }
+
+  wireSettingsIntegrations();
   // ---------------------------------------------------------------------------
   // Overflow menu
   // ---------------------------------------------------------------------------
@@ -4163,6 +4406,8 @@
 
     // Slider and offset
     el.sliderFontScale.addEventListener('input', function () { setFontScale(Number(el.sliderFontScale.value) / 100); });
+    el.sliderFontScale.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+    el.sliderFontScale.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
     el.btnNudgeMinus.addEventListener('click', function () { nudgeOffset(-0.2); });
     el.btnNudgePlus.addEventListener('click', function () { nudgeOffset(0.2); });
     el.btnNudgeReset.addEventListener('click', resetOffset);
@@ -4205,6 +4450,13 @@
     el.btnCopyAll.addEventListener('click', copyAllLyrics);
     el.searchFolderPath.addEventListener('click', openLrcFolder);
 
+    
+    if (el.btnSquareBgToggle) el.btnSquareBgToggle.addEventListener('click', toggleSquareBg);
+    if (el.btnLikedOpen) el.btnLikedOpen.addEventListener('click', function () { openHistory('liked'); });
+    if (el.btnQueueOpen) el.btnQueueOpen.addEventListener('click', openQueue);
+    if (el.btnHistoryAll) el.btnHistoryAll.addEventListener('click', function () { currentHistoryFilter = 'all'; updateHistoryFilterUi(); renderHistory(); });
+    if (el.btnHistoryLiked) el.btnHistoryLiked.addEventListener('click', function () { currentHistoryFilter = 'liked'; updateHistoryFilterUi(); renderHistory(); });
+
     // History and vocabulary
     el.btnHistoryClose.addEventListener('click', closeHistory);
     el.historySearch.addEventListener('input', debounce(renderHistory, 120));
@@ -4212,162 +4464,6 @@
       if (event.target === el.historyModal) closeHistory();
     });
     el.btnVocabClose.addEventListener('click', closeVocab);
-    el.vocabSearch.addEventListener('input', debounce(renderVocab, 120));
-    el.vocabModal.addEventListener('click', function (event) {
-      if (event.target === el.vocabModal) closeVocab();
-    });
-    el.btnExportVocab.addEventListener('click', function () {
-      callApi('export_vocab_csv').then(function (message) {
-        showToast(message || 'Vocabulary exported to Desktop', { icon: 'download' });
-      });
-    });
-    el.btnBackToLive.addEventListener('click', backToLive);
-
-    // Search modal
-    el.btnSearchClose.addEventListener('click', closeSearchModal);
-    el.searchModal.addEventListener('click', function (event) {
-      if (event.target === el.searchModal) closeSearchModal();
-    });
-    el.searchForm.addEventListener('submit', function (event) {
-      event.preventDefault();
-      searchLyrics();
-    });
-    el.btnSearchOpenFolder.addEventListener('click', openLrcFolder);
-    el.btnSearchLyrics.addEventListener('click', openSearchModal);
-    el.btnRetry.addEventListener('click', function () {
-      showSkeleton();
-      callApi('retry_lyrics');
-    });
-
-    // Dictionary
-    el.btnDictClose.addEventListener('click', function () { el.dictCard.hidden = true; });
-    el.btnDictSpeak.addEventListener('click', function () { speakWord(dictState.word, dictState.language); });
-    el.btnDictCopy.addEventListener('click', function () {
-      var text = dictState.word + (dictState.romaji ? ' (' + dictState.romaji + ')' : '') + ': ' + dictState.meaning;
-      copyText(text).then(function () { showToast('Word copied', { icon: 'copy' }); });
-    });
-    el.btnDictSave.addEventListener('click', function () {
-      if (!dictState.word) return;
-      if (!hasApi('save_vocab_word')) {
-        showToast('Vocabulary is unavailable in this build.', { icon: 'alert', tone: 'danger' });
-        return;
-      }
-      callApi('save_vocab_word', dictState.word, dictState.romaji, dictState.meaning, dictState.language, AppState.track.title)
-        .then(function (ok) {
-          if (ok === false) {
-            showToast('Could not save this word.', { icon: 'alert', tone: 'danger' });
-            return;
-          }
-          el.btnDictSave.classList.add('active');
-          vocabLoaded = false;
-          showToast('Saved “' + dictState.word + '”', { icon: 'bookmark' });
-        });
-    });
-
-    // Command palette
-    el.paletteInput.addEventListener('input', function () {
-      paletteState.active = 0;
-      renderPalette();
-    });
-    el.paletteInput.addEventListener('keydown', function (event) {
-      if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        paletteState.active = Math.min(paletteState.items.length - 1, paletteState.active + 1);
-        syncPaletteActive();
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        paletteState.active = Math.max(0, paletteState.active - 1);
-        syncPaletteActive();
-      } else if (event.key === 'Enter') {
-        event.preventDefault();
-        if (paletteState.items[paletteState.active]) runPaletteItem(paletteState.items[paletteState.active]);
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        closePalette();
-      }
-    });
-    el.commandPalette.addEventListener('click', function (event) {
-      if (event.target === el.commandPalette) closePalette();
-    });
-
-    // Lyric interactions (delegated)
-    el.lyricsViewport.addEventListener('wheel', function () {
-      AppState.userScrollUntil = Date.now() + 2600;
-    }, { passive: true });
-    el.lyricsViewport.addEventListener('touchmove', function () {
-      AppState.userScrollUntil = Date.now() + 2600;
-    }, { passive: true });
-    el.lyricsViewport.addEventListener('scroll', function () {
-      if (el.scrollRailThumb) {
-        var range = el.lyricsViewport.scrollHeight - el.lyricsViewport.clientHeight;
-        if (range > 0) {
-          var pct = (el.lyricsViewport.scrollTop / range) * 82;
-          el.scrollRailThumb.style.top = Math.min(82, Math.max(0, pct)) + '%';
-        }
-      }
-    }, { passive: true });
-    el.lyricsList.addEventListener('click', function (event) {
-      if (editingState) return;
-      var lineEl = event.target.closest('.lyric-line');
-      if (!lineEl || event.target.isContentEditable) return;
-      var selection = window.getSelection();
-      if (selection && !selection.isCollapsed && selection.toString().trim()) return;
-      var index = Number(lineEl.dataset.index);
-      var line = AppState.lyrics[index];
-      if (line && line.time >= 0) seekTo(Math.max(0, line.time - AppState.offset), true);
-    });
-    el.lyricsList.addEventListener('contextmenu', function (event) {
-      if (editingState) return;
-      var lineEl = event.target.closest('.lyric-line');
-      if (!lineEl) return;
-      event.preventDefault();
-      openLineContext(Number(lineEl.dataset.index), event.clientX, event.clientY);
-    });
-    el.lyricsList.addEventListener('dblclick', function (event) {
-      if (editingState) return;
-      var original = event.target.closest('.line-original');
-      if (!original) return;
-      event.stopPropagation();
-      var lineEl = event.target.closest('.lyric-line');
-      var origText = lineEl ? (lineEl.querySelector('.line-original') ? lineEl.querySelector('.line-original').textContent : '') : '';
-      var transText = lineEl ? (lineEl.querySelector('.line-translation') ? lineEl.querySelector('.line-translation').textContent : '') : '';
-      var selection = window.getSelection();
-      var word = selection ? selection.toString().trim() : '';
-      if (!word) word = original.textContent.trim();
-      if (word) triggerWordLookup(word, event.clientX, event.clientY, origText, transText);
-    });
-    el.ctxCopy.addEventListener('click', copyContextLine);
-    el.ctxEdit.addEventListener('click', editContextLine);
-
-    if (el.btnStudyLensClose) el.btnStudyLensClose.addEventListener('click', closeStudyLens);
-    if (el.btnStudyCopy) {
-      el.btnStudyCopy.addEventListener('click', function () {
-        var text = dictState.word + (dictState.romaji ? ' (' + dictState.romaji + ')' : '') + ': ' + dictState.meaning;
-        copyText(text).then(function () { showToast('Word copied to clipboard', { icon: 'copy' }); });
-      });
-    }
-    if (el.btnStudySave) {
-      el.btnStudySave.addEventListener('click', function () {
-        if (!dictState.word) return;
-        if (!hasApi('save_vocab_word')) {
-          showToast('Vocabulary is unavailable in this build.', { icon: 'alert', tone: 'danger' });
-          return;
-        }
-        callApi('save_vocab_word', dictState.word, dictState.romaji, dictState.meaning, dictState.language, AppState.track.title)
-          .then(function (ok) {
-            if (ok === false) {
-              showToast('Could not save this word.', { icon: 'alert', tone: 'danger' });
-              return;
-            }
-            if (el.btnStudySave) el.btnStudySave.textContent = '✓ Saved';
-            vocabLoaded = false;
-            showToast('Saved “' + dictState.word + '” to vocabulary', { icon: 'bookmark' });
-          });
-      });
-    }
-    if (el.btnDockPin) el.btnDockPin.addEventListener('click', function () { togglePin(); });
-    if (el.btnDockMini) el.btnDockMini.addEventListener('click', function () { toggleMiniMode(); });
   }
   // ---------------------------------------------------------------------------
   // Interaction wiring: scrubber bar
@@ -4558,15 +4654,45 @@
       }
     });
 
+        if (el.sliderVolume) {
+      el.sliderVolume.addEventListener('input', function () {
+        var val = Number(el.sliderVolume.value);
+        if (el.volumeLabel) el.volumeLabel.textContent = val + '%';
+        updateSliderFill(el.sliderVolume);
+        callApi('set_volume', val);
+      });
+      callApi('get_volume').then(function (res) {
+        if (res && typeof res.volume === 'number') {
+          updateVolumeUi(res.volume);
+        }
+      });
+    }
     initMiniResize();
     initSquareResize();
+  }
+
+  function updateVolumeUi(volume) {
+    if (typeof volume !== 'number') return;
+    if (el.sliderVolume) {
+      el.sliderVolume.value = String(volume);
+      updateSliderFill(el.sliderVolume);
+    }
+    if (el.volumeLabel) el.volumeLabel.textContent = volume + '%';
   }
 
   function handleWheelVolume(event) {
     event.preventDefault();
     var delta = event.deltaY < 0 ? 1 : -1;
-    callApi('adjust_volume', delta);
-    showToast(delta > 0 ? 'Volume up' : 'Volume down', { icon: 'volume', duration: 1500 });
+    callApi('adjust_volume', delta).then(function (res) {
+      if (res && res.target === 'spotify' && typeof res.volume === 'number') {
+        updateVolumeUi(res.volume);
+        showToast('Spotify ' + res.volume + '%', { icon: 'volume', duration: 1200 });
+      } else {
+        showToast(delta > 0 ? 'Volume up' : 'Volume down', { icon: 'volume', duration: 1200 });
+      }
+    }).catch(function () {
+      showToast(delta > 0 ? 'Volume up' : 'Volume down', { icon: 'volume', duration: 1200 });
+    });
   }
 
   function wireEvents() {
@@ -4613,7 +4739,7 @@
 
   window.applyPersistedViewMode = function () {
     var mode = AppState.settings.view_mode || 'card';
-    applyWindowMode(mode, { backend: true });
+    applyWindowMode(mode, { backend: false });
   };
 
   window.applyTheme = function (choice) { applyTheme(choice); };

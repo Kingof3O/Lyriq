@@ -88,6 +88,8 @@
 
     // Slider and offset
     el.sliderFontScale.addEventListener('input', function () { setFontScale(Number(el.sliderFontScale.value) / 100); });
+    el.sliderFontScale.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+    el.sliderFontScale.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
     el.btnNudgeMinus.addEventListener('click', function () { nudgeOffset(-0.2); });
     el.btnNudgePlus.addEventListener('click', function () { nudgeOffset(0.2); });
     el.btnNudgeReset.addEventListener('click', resetOffset);
@@ -130,6 +132,13 @@
     el.btnCopyAll.addEventListener('click', copyAllLyrics);
     el.searchFolderPath.addEventListener('click', openLrcFolder);
 
+    
+    if (el.btnSquareBgToggle) el.btnSquareBgToggle.addEventListener('click', toggleSquareBg);
+    if (el.btnLikedOpen) el.btnLikedOpen.addEventListener('click', function () { openHistory('liked'); });
+    if (el.btnQueueOpen) el.btnQueueOpen.addEventListener('click', openQueue);
+    if (el.btnHistoryAll) el.btnHistoryAll.addEventListener('click', function () { currentHistoryFilter = 'all'; updateHistoryFilterUi(); renderHistory(); });
+    if (el.btnHistoryLiked) el.btnHistoryLiked.addEventListener('click', function () { currentHistoryFilter = 'liked'; updateHistoryFilterUi(); renderHistory(); });
+
     // History and vocabulary
     el.btnHistoryClose.addEventListener('click', closeHistory);
     el.historySearch.addEventListener('input', debounce(renderHistory, 120));
@@ -137,160 +146,4 @@
       if (event.target === el.historyModal) closeHistory();
     });
     el.btnVocabClose.addEventListener('click', closeVocab);
-    el.vocabSearch.addEventListener('input', debounce(renderVocab, 120));
-    el.vocabModal.addEventListener('click', function (event) {
-      if (event.target === el.vocabModal) closeVocab();
-    });
-    el.btnExportVocab.addEventListener('click', function () {
-      callApi('export_vocab_csv').then(function (message) {
-        showToast(message || 'Vocabulary exported to Desktop', { icon: 'download' });
-      });
-    });
-    el.btnBackToLive.addEventListener('click', backToLive);
-
-    // Search modal
-    el.btnSearchClose.addEventListener('click', closeSearchModal);
-    el.searchModal.addEventListener('click', function (event) {
-      if (event.target === el.searchModal) closeSearchModal();
-    });
-    el.searchForm.addEventListener('submit', function (event) {
-      event.preventDefault();
-      searchLyrics();
-    });
-    el.btnSearchOpenFolder.addEventListener('click', openLrcFolder);
-    el.btnSearchLyrics.addEventListener('click', openSearchModal);
-    el.btnRetry.addEventListener('click', function () {
-      showSkeleton();
-      callApi('retry_lyrics');
-    });
-
-    // Dictionary
-    el.btnDictClose.addEventListener('click', function () { el.dictCard.hidden = true; });
-    el.btnDictSpeak.addEventListener('click', function () { speakWord(dictState.word, dictState.language); });
-    el.btnDictCopy.addEventListener('click', function () {
-      var text = dictState.word + (dictState.romaji ? ' (' + dictState.romaji + ')' : '') + ': ' + dictState.meaning;
-      copyText(text).then(function () { showToast('Word copied', { icon: 'copy' }); });
-    });
-    el.btnDictSave.addEventListener('click', function () {
-      if (!dictState.word) return;
-      if (!hasApi('save_vocab_word')) {
-        showToast('Vocabulary is unavailable in this build.', { icon: 'alert', tone: 'danger' });
-        return;
-      }
-      callApi('save_vocab_word', dictState.word, dictState.romaji, dictState.meaning, dictState.language, AppState.track.title)
-        .then(function (ok) {
-          if (ok === false) {
-            showToast('Could not save this word.', { icon: 'alert', tone: 'danger' });
-            return;
-          }
-          el.btnDictSave.classList.add('active');
-          vocabLoaded = false;
-          showToast('Saved “' + dictState.word + '”', { icon: 'bookmark' });
-        });
-    });
-
-    // Command palette
-    el.paletteInput.addEventListener('input', function () {
-      paletteState.active = 0;
-      renderPalette();
-    });
-    el.paletteInput.addEventListener('keydown', function (event) {
-      if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        paletteState.active = Math.min(paletteState.items.length - 1, paletteState.active + 1);
-        syncPaletteActive();
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        paletteState.active = Math.max(0, paletteState.active - 1);
-        syncPaletteActive();
-      } else if (event.key === 'Enter') {
-        event.preventDefault();
-        if (paletteState.items[paletteState.active]) runPaletteItem(paletteState.items[paletteState.active]);
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        closePalette();
-      }
-    });
-    el.commandPalette.addEventListener('click', function (event) {
-      if (event.target === el.commandPalette) closePalette();
-    });
-
-    // Lyric interactions (delegated)
-    el.lyricsViewport.addEventListener('wheel', function () {
-      AppState.userScrollUntil = Date.now() + 2600;
-    }, { passive: true });
-    el.lyricsViewport.addEventListener('touchmove', function () {
-      AppState.userScrollUntil = Date.now() + 2600;
-    }, { passive: true });
-    el.lyricsViewport.addEventListener('scroll', function () {
-      if (el.scrollRailThumb) {
-        var range = el.lyricsViewport.scrollHeight - el.lyricsViewport.clientHeight;
-        if (range > 0) {
-          var pct = (el.lyricsViewport.scrollTop / range) * 82;
-          el.scrollRailThumb.style.top = Math.min(82, Math.max(0, pct)) + '%';
-        }
-      }
-    }, { passive: true });
-    el.lyricsList.addEventListener('click', function (event) {
-      if (editingState) return;
-      var lineEl = event.target.closest('.lyric-line');
-      if (!lineEl || event.target.isContentEditable) return;
-      var selection = window.getSelection();
-      if (selection && !selection.isCollapsed && selection.toString().trim()) return;
-      var index = Number(lineEl.dataset.index);
-      var line = AppState.lyrics[index];
-      if (line && line.time >= 0) seekTo(Math.max(0, line.time - AppState.offset), true);
-    });
-    el.lyricsList.addEventListener('contextmenu', function (event) {
-      if (editingState) return;
-      var lineEl = event.target.closest('.lyric-line');
-      if (!lineEl) return;
-      event.preventDefault();
-      openLineContext(Number(lineEl.dataset.index), event.clientX, event.clientY);
-    });
-    el.lyricsList.addEventListener('dblclick', function (event) {
-      if (editingState) return;
-      var original = event.target.closest('.line-original');
-      if (!original) return;
-      event.stopPropagation();
-      var lineEl = event.target.closest('.lyric-line');
-      var origText = lineEl ? (lineEl.querySelector('.line-original') ? lineEl.querySelector('.line-original').textContent : '') : '';
-      var transText = lineEl ? (lineEl.querySelector('.line-translation') ? lineEl.querySelector('.line-translation').textContent : '') : '';
-      var selection = window.getSelection();
-      var word = selection ? selection.toString().trim() : '';
-      if (!word) word = original.textContent.trim();
-      if (word) triggerWordLookup(word, event.clientX, event.clientY, origText, transText);
-    });
-    el.ctxCopy.addEventListener('click', copyContextLine);
-    el.ctxEdit.addEventListener('click', editContextLine);
-
-    if (el.btnStudyLensClose) el.btnStudyLensClose.addEventListener('click', closeStudyLens);
-    if (el.btnStudyCopy) {
-      el.btnStudyCopy.addEventListener('click', function () {
-        var text = dictState.word + (dictState.romaji ? ' (' + dictState.romaji + ')' : '') + ': ' + dictState.meaning;
-        copyText(text).then(function () { showToast('Word copied to clipboard', { icon: 'copy' }); });
-      });
-    }
-    if (el.btnStudySave) {
-      el.btnStudySave.addEventListener('click', function () {
-        if (!dictState.word) return;
-        if (!hasApi('save_vocab_word')) {
-          showToast('Vocabulary is unavailable in this build.', { icon: 'alert', tone: 'danger' });
-          return;
-        }
-        callApi('save_vocab_word', dictState.word, dictState.romaji, dictState.meaning, dictState.language, AppState.track.title)
-          .then(function (ok) {
-            if (ok === false) {
-              showToast('Could not save this word.', { icon: 'alert', tone: 'danger' });
-              return;
-            }
-            if (el.btnStudySave) el.btnStudySave.textContent = '✓ Saved';
-            vocabLoaded = false;
-            showToast('Saved “' + dictState.word + '” to vocabulary', { icon: 'bookmark' });
-          });
-      });
-    }
-    if (el.btnDockPin) el.btnDockPin.addEventListener('click', function () { togglePin(); });
-    if (el.btnDockMini) el.btnDockMini.addEventListener('click', function () { toggleMiniMode(); });
   }

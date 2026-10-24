@@ -83,8 +83,14 @@ img {
 .no-drag,
 button,
 input,
-a {
-  -webkit-app-region: no-drag;
+a,
+select,
+textarea,
+.slider,
+.switch,
+.sheet,
+.modal {
+  -webkit-app-region: no-drag !important;
 }
 
 .album-backdrop {
@@ -119,12 +125,79 @@ body.low-power .album-backdrop {
 .app-shell::before {
   content: '';
   position: absolute;
-  inset: -180px -80px auto auto;
-  width: 680px;
-  height: 680px;
-  background: radial-gradient(circle, rgba(124, 169, 255, 0.08), rgba(139, 92, 246, 0.04) 34%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--live-accent, rgba(124, 169, 255, 0.12)), rgba(139, 92, 246, 0.04) 35%, transparent 70%);
+  opacity: 0.12;
+  filter: blur(40px);
   pointer-events: none;
   z-index: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Ghost HUD Mode - Mode 5 (Canonical Section 12 Spec)
+   -------------------------------------------------------------------------- */
+body.ghost-mode,
+body.mode-ghost {
+  background: transparent !important;
+}
+
+body.ghost-mode .album-backdrop,
+body.ghost-mode .album-glow,
+body.ghost-mode .app-shell::before,
+body.mode-ghost .album-backdrop,
+body.mode-ghost .album-glow,
+body.mode-ghost .app-shell::before {
+  display: none !important;
+}
+
+body.ghost-mode .topbar,
+body.ghost-mode .player-dock,
+body.ghost-mode .stage-meta,
+body.ghost-mode .stage-actions,
+body.mode-ghost .topbar,
+body.mode-ghost .player-dock,
+body.mode-ghost .stage-meta,
+body.mode-ghost .stage-actions {
+  display: none !important;
+}
+
+body.ghost-mode .lyrics-list,
+body.mode-ghost .lyrics-list {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+body.ghost-mode .lyric-line:not(.active):not(.near),
+body.mode-ghost .lyric-line:not(.active):not(.near) {
+  opacity: 0.12 !important;
+}
+
+body.ghost-mode .lyric-line.near,
+body.mode-ghost .lyric-line.near {
+  opacity: 0.40 !important;
+}
+
+body.ghost-mode .ghost-hud-hint,
+body.mode-ghost .ghost-hud-hint {
+  display: flex !important;
+}
+
+.ghost-hud-hint {
+  display: none;
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  font-size: 11px;
+  color: #94A3B8;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  z-index: 50;
 }
 
 .album-glow {

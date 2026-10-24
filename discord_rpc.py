@@ -9,31 +9,59 @@ import threading
 
 logger = logging.getLogger("DiscordRPC")
 
-CLIENT_ID = "121456789012345678"  # Generic rich presence client ID
+# Default registered Rich Presence client ID
+DEFAULT_CLIENT_ID = "1563650212957003939"
 
 class DiscordRPC:
-    def __init__(self, client_id=CLIENT_ID):
-        self.client_id = client_id
+    def __init__(self, client_id=DEFAULT_CLIENT_ID):
+        self.client_id = str(client_id).strip() or DEFAULT_CLIENT_ID
         self.pipe = None
         self.connected = False
         self.enabled = True
         self.last_update = 0
         self.lock = threading.Lock()
 
+    def set_client_id(self, client_id: str):
+        with self.lock:
+            cid = str(client_id).strip() or DEFAULT_CLIENT_ID
+            if cid != self.client_id:
+                self.client_id = cid
+                if self.connected:
+                    self.close()
+
     def connect(self):
         if self.connected or not self.enabled:
             return
         for i in range(10):
-            pipe_name = rf"\\.\pipe\discord-rpc-{i}"
+            pipe_name = rf"\\.\pipe\discord-ipc-{i}"
             try:
                 self.pipe = open(pipe_name, "w+b", buffering=0)
                 # Send Handshake (Opcode 0)
-                handshake = json.dumps({"v": 1, "client_id": self.client_id})
-                self._send(0, handshake)
-                self.connected = True
-                logger.info("Connected to Discord RPC IPC pipe")
-                return
-            except Exception:
+                handshake = json.dumps({"v": 1, "client_id": self.client_id}).encode("utf-8")
+                header = struct.pack("<II", 0, len(handshake))
+                self.pipe.write(header + handshake)
+                self.pipe.flush()
+
+                # Read handshake response
+                resp_header = self.pipe.read(8)
+                if resp_header and len(resp_header) == 8:
+                    op, length = struct.unpack("<II", resp_header)
+                    resp_bytes = self.pipe.read(length)
+                    if op == 1:
+                        self.connected = True
+                        logger.info("Connected to Discord IPC pipe: %s", pipe_name)
+                        return
+                    else:
+                        logger.debug("Discord handshake returned non-ready op: %s", op)
+                self.pipe.close()
+                self.pipe = None
+            except Exception as e:
+                if self.pipe:
+                    try:
+                        self.pipe.close()
+                    except Exception:
+                        pass
+                self.pipe = None
                 continue
 
     def _send(self, opcode, payload_str):
@@ -59,7 +87,7 @@ class DiscordRPC:
                 return
 
             try:
-                state_text = f"🎵 {lyric_line[:120]}" if lyric_line else f"by {artist}"
+                state_text = f"{lyric_line[:120]}" if lyric_line else f"by {artist}"
                 start_time = int(time.time() - position) if position > 0 else int(time.time())
 
                 activity = {
@@ -68,13 +96,10 @@ class DiscordRPC:
                         "pid": os.getpid(),
                         "activity": {
                             "details": f"{title} - {artist}"[:128],
-                            "state": state_text,
+                            "state": state_text[:128],
                             "timestamps": {"start": start_time},
                             "assets": {
-                                "large_image": "spotify",
-                                "large_text": "Spotify Realtime Lyrics",
-                                "small_image": "live",
-                                "small_text": "Live Translated Lyrics"
+                                "large_text": "Lyriq - Synchronized Lyrics"
                             }
                         }
                     },
@@ -82,7 +107,7 @@ class DiscordRPC:
                 }
                 self._send(1, json.dumps(activity))
             except Exception as e:
-                logger.debug(f"Discord update error: {e}")
+                logger.debug("Discord update error: %s", e)
                 self.connected = False
                 try:
                     if self.pipe:

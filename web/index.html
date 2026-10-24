@@ -67,15 +67,21 @@
     <symbol id="icon-external" viewBox="0 0 24 24"><path d="M14 3h7v7M21 3l-9 9M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
     <symbol id="icon-wifi" viewBox="0 0 24 24"><path d="M2 8.8a16 16 0 0 1 20 0M5 12.5a11 11 0 0 1 14 0M8.5 16a6 6 0 0 1 7 0"/><circle cx="12" cy="19.5" r=".6" fill="currentColor" stroke="none"/></symbol>
     <symbol id="icon-window" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></symbol>
+    <symbol id="icon-github" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></symbol>
+    <symbol id="icon-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
   </svg>
 
   <div class="album-backdrop" id="albumBackdrop" aria-hidden="true"></div>
 
   <div class="app-shell" id="appShell">
     <div class="album-glow" id="albumGlow" aria-hidden="true"></div>
+    <div class="ghost-hud-hint"><b>Ghost HUD</b> &middot; click-through ON &middot; Ctrl+Shift+G</div>
     <div class="square-header pywebview-drag-region" id="squareHeader" hidden>
       <span class="square-title" id="squareTitle">Connecting…</span>
       <div class="square-header-actions no-drag">
+        <button class="icon-btn square-mini-btn" id="btnSquareBgToggle" type="button" aria-label="Toggle album art background" data-tooltip="Toggle album art background">
+          <svg class="icon"><use href="#icon-disc"></use></svg>
+        </button>
         <button class="icon-btn square-mini-btn" id="btnSquarePin" type="button" aria-label="Always on top" data-tooltip="Always on top">
           <svg class="icon"><use href="#icon-pin"></use></svg>
         </button>
@@ -141,6 +147,8 @@
         <button class="menu-item" id="menuDiscord" type="button" role="menuitemcheckbox" aria-checked="true" data-icon="headphones"><span>Discord presence</span></button>
         <div class="menu-sep" role="separator"></div>
         <button class="menu-item" id="btnHistoryOpen" type="button" role="menuitem" data-icon="history"><span>Song history</span></button>
+        <button class="menu-item" id="btnLikedOpen" type="button" role="menuitem" data-icon="heart-filled"><span>Liked songs</span></button>
+        <button class="menu-item" id="btnQueueOpen" type="button" role="menuitem" data-icon="list"><span>Spotify queue</span></button>
         <button class="menu-item" id="btnVocabOpen" type="button" role="menuitem" data-icon="book"><span>Vocabulary</span></button>
         <div class="menu-sep" role="separator"></div>
         <button class="menu-item" id="menuExportLrc" type="button" role="menuitem" data-icon="file-text"><span>Export LRC</span></button>
@@ -204,10 +212,9 @@
 
         <div class="lyrics-scroll" id="lyricsViewport">
           <div class="empty-state" id="idleState">
-            <span class="empty-icon" aria-hidden="true"><svg class="icon"><use href="#icon-music"></use></svg></span>
-            <h2>Ready when you are</h2>
-            <p>Play a song in Spotify. Synced lyrics, romanization and translations will appear here automatically.</p>
-            <div class="empty-hint"><kbd>Ctrl</kbd><kbd>K</kbd><span>for commands</span></div>
+            <h2>Waiting for Spotify</h2>
+            <p>Start playback on your Spotify desktop app or web player. Synced lyrics, romanization, and translations will appear automatically.</p>
+            <div class="empty-hint"><kbd>Ctrl</kbd><kbd>K</kbd><span>for command palette</span></div>
           </div>
 
           <div class="skeleton" id="skeletonState" aria-hidden="true" hidden>
@@ -302,9 +309,15 @@
           <button class="icon-btn" id="btnDockMini" type="button" aria-label="Mini mode" data-tooltip="Mini mode (Ctrl+Shift+M)">
             <svg class="icon"><use href="#icon-pip"></use></svg>
           </button>
-          <button class="icon-btn" id="btnVolume" type="button" aria-label="Volume help" data-tooltip="Scroll the album art to change Windows volume" hidden>
-            <svg class="icon"><use href="#icon-volume"></use></svg>
-          </button>
+          <div class="dock-volume" id="dockVolume">
+            <button class="icon-btn" id="btnVolume" type="button" aria-label="Spotify volume" data-tooltip="Adjust volume">
+              <svg class="icon"><use id="volumeIconUse" href="#icon-volume"></use></svg>
+            </button>
+            <div class="volume-slider-wrap" id="volumeSliderWrap">
+              <input type="range" class="slider volume-slider" id="sliderVolume" min="0" max="100" value="100" step="1" aria-label="Spotify volume">
+              <span class="volume-label" id="volumeLabel">100%</span>
+            </div>
+          </div>
         </div>
       </div>
     </footer>
@@ -492,6 +505,20 @@
             <div><span class="setting-label">Discord presence</span><span class="setting-help">Share the current song on Discord.</span></div>
             <button class="switch" id="checkDiscord" type="button" role="switch" data-tooltip="Discord presence" aria-checked="true" aria-label="Discord presence"><span class="switch-thumb"></span></button>
           </div>
+          <div class="setting-block" style="margin-top: 4px;">
+            <span class="setting-label">Discord Client ID</span>
+            <input type="text" class="input-text" id="inputDiscordClientId" placeholder="Default (1563650212957003939)" aria-label="Discord Application Client ID" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px 10px; color: #fff; font-size: 12px; margin-top: 4px;">
+            <p class="setting-help" style="margin-top: 4px;">Custom application ID from Discord Developer Portal. Leave empty for default.</p>
+          </div>
+          <div class="setting-block" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06);">
+            <span class="setting-label">Spotify Web API Token</span>
+            <input type="password" class="input-text" id="inputSpotifyToken" placeholder="Paste Spotify access token…" aria-label="Spotify API access token" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px 10px; color: #fff; font-size: 12px; margin-top: 4px;">
+            <p class="setting-help" style="margin-top: 4px;">Required to view live upcoming queue. Generate a token with <code>user-read-playback-state</code> scope from Spotify Developer Dashboard.</p>
+            <div class="button-row" style="margin-top: 6px;">
+              <button class="btn btn-sm" id="btnSaveSpotifyToken" type="button"><svg class="icon"><use href="#icon-check"></use></svg> Save Token</button>
+              <button class="btn btn-sm" id="btnOpenSpotifyDev" type="button"><svg class="icon"><use href="#icon-external"></use></svg> Spotify Dashboard</button>
+            </div>
+          </div>
           <div class="setting-row">
             <div><span class="setting-label">Always on top</span><span class="setting-help">Keep the window above other apps.</span></div>
             <button class="switch" id="checkPin" type="button" role="switch" data-tooltip="Always on top" aria-checked="false" aria-label="Always on top"><span class="switch-thumb"></span></button>
@@ -586,6 +613,25 @@
             <div><dt>Translation</dt><dd>Google Translate</dd></div>
             <div><dt>Interface</dt><dd>Vanilla HTML, CSS and JavaScript</dd></div>
           </dl>
+          <div class="setting-block" style="margin-top: 14px;">
+            <span class="setting-label">Source Code & Releases</span>
+            <div class="button-row" style="margin-top: 8px;">
+              <a class="btn btn-sm" id="btnGithubRepo" href="https://github.com/Kingof3O/Lyriq" target="_blank" rel="noopener noreferrer">
+                <svg class="icon"><use href="#icon-github"></use></svg> GitHub Repository
+              </a>
+              <button class="btn btn-sm" id="btnCheckUpdates" type="button">
+                <svg class="icon"><use href="#icon-refresh"></use></svg> Check for updates
+              </button>
+            </div>
+            <p class="setting-help" id="updateStatusText">Lyriq v3.0.0 · Up to date</p>
+          </div>
+          <div class="setting-row">
+            <div>
+              <span class="setting-label">Automatic updates</span>
+              <span class="setting-help">Check GitHub for new releases on startup.</span>
+            </div>
+            <button class="switch" id="checkAutoUpdate" type="button" role="switch" aria-checked="true" aria-label="Automatic update checks"><span class="switch-thumb"></span></button>
+          </div>
         </section>
       </div>
     </aside>
@@ -598,10 +644,30 @@
         <button class="icon-btn" id="btnHistoryClose" type="button" aria-label="Close history" data-tooltip="Close"><svg class="icon"><use href="#icon-close"></use></svg></button>
       </header>
       <div class="modal-toolbar">
-        <label class="search-field"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg><input id="historySearch" type="search" placeholder="Search history" aria-label="Search song history"></label>
+        <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+          <label class="search-field" style="flex: 1;"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg><input id="historySearch" type="search" placeholder="Search songs..." aria-label="Search song history"></label>
+          <div class="segmented" id="historyTabGroup" role="group" aria-label="Filter library" style="margin: 0; flex-shrink: 0;">
+            <button type="button" class="active" id="btnHistoryAll">All</button>
+            <button type="button" id="btnHistoryLiked"><svg class="icon" aria-hidden="true"><use href="#icon-heart-filled"></use></svg> Liked</button>
+          </div>
+        </div>
       </div>
       <div class="modal-body" id="historyList"></div>
       <footer class="modal-foot">Choose a song to preview its lyrics. Playback stays on the live track.</footer>
+    </div>
+  </div>
+
+  <div class="overlay" id="queueModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="queueTitle" tabindex="-1">
+      <header class="modal-head">
+        <div><span class="eyebrow">Playback</span><h2 id="queueTitle">Upcoming Queue</h2></div>
+        <div class="modal-head-actions">
+          <button class="icon-btn" id="btnQueueRefresh" type="button" aria-label="Refresh queue" data-tooltip="Refresh queue"><svg class="icon"><use href="#icon-refresh"></use></svg></button>
+          <button class="icon-btn" id="btnQueueClose" type="button" aria-label="Close queue" data-tooltip="Close"><svg class="icon"><use href="#icon-close"></use></svg></button>
+        </div>
+      </header>
+      <div class="modal-body" id="queueList"></div>
+      <footer class="modal-foot">Live playback queue from Spotify.</footer>
     </div>
   </div>
 

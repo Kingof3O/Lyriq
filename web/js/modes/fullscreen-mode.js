@@ -88,3 +88,5 @@
     if (AppState.settings.split_layout) setSplit(true, { persist: false });
   }
 
+  window.applyWindowMode = applyWindowMode;
+

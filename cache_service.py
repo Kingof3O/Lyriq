@@ -518,6 +518,9 @@ class CacheService:
             logger.error("Settings write error: %s", exc)
             return False
 
+    save_setting = set_setting
+    save_settings = set_settings
+
     # ------------------------------------------------------------------
     # Per-song offsets
     # ------------------------------------------------------------------
