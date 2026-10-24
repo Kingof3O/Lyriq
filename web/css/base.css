@@ -124,3 +124,16 @@ body.low-power .album-backdrop {
   pointer-events: none;
   z-index: 0;
 }
+
+.album-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 620px;
+  height: 620px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(72, 91, 137, 0.14), rgba(139, 92, 246, 0.035) 45%, transparent 68%);
+  filter: blur(16px);
+  pointer-events: none;
+  z-index: 0;
+}

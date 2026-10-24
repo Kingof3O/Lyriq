@@ -1,5 +1,5 @@
 /* --------------------------------------------------------------------------
-   Workspace and lyrics
+   Workspace and lyrics - Canonical Lyriq Reader Stage
    -------------------------------------------------------------------------- */
 
 .workspace {
@@ -105,7 +105,7 @@
   overflow-x: hidden;
   scroll-behavior: smooth;
   scrollbar-gutter: stable;
-  padding: 8vh 20px 26vh;
+  padding: 14vh 24px 34vh;
 }
 
 .lyrics-scroll::-webkit-scrollbar,
@@ -130,27 +130,26 @@
 .lyrics-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-width: 880px;
+  gap: 30px;
+  width: min(920px, 72vw);
   margin: 0 auto;
 }
 
 .lyric-line {
   position: relative;
-  padding: 10px 18px 10px 27px;
-  border-radius: 12px;
+  padding: 0;
   cursor: pointer;
-  opacity: var(--lyric-inactive-opacity);
-  transform: scale(0.97);
+  opacity: 0.32;
+  transform: scale(0.965);
   transform-origin: left center;
-  transition: opacity 0.25s ease, transform 0.25s ease, background-color 0.25s ease;
+  transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
   content-visibility: auto;
-  contain-intrinsic-size: auto 92px;
+  contain-intrinsic-size: auto 90px;
+  background: transparent !important;
 }
 
 .lyric-line:hover {
   opacity: 0.72;
-  background: var(--surface-hover);
 }
 
 .lyric-line.active,
@@ -159,25 +158,25 @@
 }
 
 .lyric-line.near {
+  opacity: 0.62;
+  transform: scale(0.985);
   will-change: transform, opacity;
 }
 
 .lyric-line.active {
   opacity: 1;
   transform: scale(1);
-  background: linear-gradient(90deg, var(--accent-soft), transparent 62%);
+  background: transparent !important;
 }
 
 .lyric-line.active::before {
   content: '';
   position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: 8px;
+  top: 5px;
+  bottom: 5px;
+  left: 1px;
   width: 3px;
   border-radius: 3px;
-  background: linear-gradient(var(--brand-soft), var(--brand));
+  background: linear-gradient(var(--brand2), var(--brand));
   box-shadow: 0 0 14px rgba(139, 92, 246, 0.55);
-  transition: background-color 0.4s ease, box-shadow 0.4s ease;
 }
-

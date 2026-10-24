@@ -274,6 +274,7 @@ def run_smoke():
     print(f"Smoke HTTP server running at http://127.0.0.1:{port}/")
 
     scenarios = [
+        ("synced", 1120, 760, AUDIT_DIR / "00_reader_desktop_1120x760.png"),
         ("synced", 480, 720, AUDIT_DIR / "01_card_synced.png"),
         ("unsynced", 480, 720, AUDIT_DIR / "02_card_unsynced.png"),
         ("split", 1280, 800, AUDIT_DIR / "03_fullscreen_split.png"),

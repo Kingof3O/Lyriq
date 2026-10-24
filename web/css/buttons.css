@@ -98,9 +98,10 @@
 }
 
 .top-actions {
+  margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   flex: 0 0 auto;
 }
 

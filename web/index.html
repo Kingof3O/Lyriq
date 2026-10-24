@@ -72,7 +72,8 @@
   <div class="album-backdrop" id="albumBackdrop" aria-hidden="true"></div>
 
   <div class="app-shell" id="appShell">
-    <div class="square-header pywebview-drag-region" id="squareHeader">
+    <div class="album-glow" id="albumGlow" aria-hidden="true"></div>
+    <div class="square-header pywebview-drag-region" id="squareHeader" hidden>
       <span class="square-title" id="squareTitle">Connecting…</span>
       <div class="square-header-actions no-drag">
         <button class="icon-btn square-mini-btn" id="btnSquarePin" type="button" aria-label="Always on top" data-tooltip="Always on top">
@@ -308,7 +309,7 @@
       </div>
     </footer>
 
-    <footer class="square-footer" id="squareFooter">
+    <footer class="square-footer" id="squareFooter" hidden>
       <div class="square-progress-bar" id="squareScrubTrack" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
         <span class="square-progress-fill" id="squareScrubFill"></span>
       </div>

@@ -16,10 +16,10 @@ from cache_service import get_cache
 
 logger = logging.getLogger("WindowState")
 
-DEFAULT_WIDTH = 480
-DEFAULT_HEIGHT = 720
-MIN_WIDTH = 360
-MIN_HEIGHT = 420
+DEFAULT_WIDTH = 1120
+DEFAULT_HEIGHT = 760
+MIN_WIDTH = 640
+MIN_HEIGHT = 480
 DEFAULT_MINI_WIDTH = 560
 MIN_MINI_WIDTH = 420
 MAX_MINI_WIDTH = 1400
@@ -169,9 +169,13 @@ def clamp_position(x, y, width, height):
 def load_window_settings(settings):
     """Build validated window settings from a persisted settings mapping."""
     settings = settings if isinstance(settings, dict) else {}
-    width, height = clamp_size(
-        settings.get("window_width"), settings.get("window_height")
-    )
+    saved_w = _as_int(settings.get("window_width"))
+    saved_h = _as_int(settings.get("window_height"))
+    # If saved setting had legacy mobile card size (< 680), upgrade to canonical desktop default
+    if saved_w is not None and saved_w < 680:
+        saved_w = DEFAULT_WIDTH
+        saved_h = DEFAULT_HEIGHT
+    width, height = clamp_size(saved_w, saved_h)
 
     x = _as_int(settings.get("window_x"))
     y = _as_int(settings.get("window_y"))

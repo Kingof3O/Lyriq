@@ -1,4 +1,7 @@
-/* RTL / Arabic styling */
+/* --------------------------------------------------------------------------
+   Karaoke, Typography Scale & RTL Support (Lyriq_UIUX_Kit)
+   -------------------------------------------------------------------------- */
+
 .is-rtl,
 [dir="rtl"] {
   direction: rtl;
@@ -8,17 +11,12 @@
 .lyric-line.is-rtl {
   direction: rtl;
   text-align: right;
-  padding: 10px 27px 10px 18px;
   transform-origin: right center;
-}
-
-.lyric-line.is-rtl.active {
-  background: linear-gradient(270deg, var(--accent-soft), transparent 62%);
 }
 
 .lyric-line.is-rtl.active::before {
   left: auto;
-  right: 8px;
+  right: 1px;
 }
 
 .line-original.is-rtl,
@@ -52,46 +50,78 @@
   right: 6px;
 }
 
+/* Canonical Lyriq Typography Scale */
 .line-original {
-  color: var(--text);
-  font-size: calc(23px * var(--font-scale));
+  color: #51515D;
+  font-size: calc(29px * var(--font-scale));
   font-weight: 570;
-  line-height: 1.25;
-  letter-spacing: -0.025em;
+  line-height: 1.18;
+  letter-spacing: -0.035em;
   overflow-wrap: anywhere;
   user-select: text;
+  transition: color 0.2s var(--ease), font-size 0.2s var(--ease);
+}
+
+.lyric-line.near .line-original {
+  color: #767681;
 }
 
 .lyric-line.active .line-original {
-  font-size: calc(38px * var(--font-scale));
+  color: var(--text);
+  font-size: calc(46px * var(--font-scale));
+  line-height: 1.08;
   font-weight: 690;
-  line-height: 1.12;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.048em;
+  padding-left: 26px;
+  text-wrap: balance;
+}
+
+.lyric-line.is-rtl.active .line-original {
+  padding-left: 0;
+  padding-right: 26px;
 }
 
 .line-romaji {
-  margin-top: 4px;
+  margin-top: 6px;
+  padding-left: 0;
   color: var(--text-3);
-  font-size: calc(13px * var(--font-scale));
+  font-size: calc(14px * var(--font-scale));
   font-weight: 450;
-  line-height: 1.35;
+  line-height: 1.4;
   letter-spacing: 0.01em;
   user-select: text;
 }
 
+.lyric-line.active .line-romaji {
+  padding-left: 26px;
+}
+
+.lyric-line.is-rtl.active .line-romaji {
+  padding-left: 0;
+  padding-right: 26px;
+}
+
 .line-translation {
-  margin-top: 5px;
-  color: var(--text-2);
-  font-size: calc(19px * var(--font-scale));
+  margin-top: 10px;
+  padding-left: 0;
+  color: var(--text-3);
+  font-size: calc(20px * var(--font-scale));
   font-weight: 520;
-  line-height: 1.32;
-  letter-spacing: -0.018em;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
   user-select: text;
-  transition: color 0.25s ease;
+  transition: color 0.2s var(--ease);
 }
 
 .lyric-line.active .line-translation {
-  color: var(--brand-soft);
+  color: var(--brand2);
+  font-size: calc(22px * var(--font-scale));
+  padding-left: 26px;
+}
+
+.lyric-line.is-rtl.active .line-translation {
+  padding-left: 0;
+  padding-right: 26px;
 }
 
 .line-romaji:empty,
@@ -104,93 +134,9 @@ body.hide-romaji .mini-romaji {
   display: none !important;
 }
 
-/* Karaoke sweep: one gradient on the active line only. */
-body.enable-sweep .lyric-line.active .line-original:not(.has-sublines) {
-  background: linear-gradient(90deg,
-    var(--text) 0%,
-    var(--text) var(--line-progress, 0%),
-    var(--text-3) var(--line-progress, 0%),
-    var(--text-3) 100%);
+.word-sweep {
+  display: inline-block;
+  background-image: linear-gradient(90deg, var(--text) var(--sweep-progress, 0%), rgba(255, 255, 255, 0.32) var(--sweep-progress, 0%));
   -webkit-background-clip: text;
-  background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: transparent;
 }
-
-/* RTL Karaoke sweep: sweeps right to left (270deg) */
-body.enable-sweep .lyric-line.is-rtl.active .line-original:not(.has-sublines),
-body.enable-sweep .lyric-line.active .line-original.is-rtl:not(.has-sublines) {
-  background: linear-gradient(270deg,
-    var(--text) 0%,
-    var(--text) var(--line-progress, 0%),
-    var(--text-3) var(--line-progress, 0%),
-    var(--text-3) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-
-/* Multi-line sequential karaoke sublines */
-.lyric-subline {
-  display: block;
-}
-
-body.enable-sweep .lyric-subline {
-  background: linear-gradient(90deg,
-    var(--text) 0%,
-    var(--text) var(--line-progress, 0%),
-    var(--text-3) var(--line-progress, 0%),
-    var(--text-3) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-
-body.enable-sweep .lyric-line.is-rtl .lyric-subline,
-body.enable-sweep .lyric-subline.is-rtl,
-body.enable-sweep .is-rtl .lyric-subline {
-  background: linear-gradient(270deg,
-    var(--text) 0%,
-    var(--text) var(--line-progress, 0%),
-    var(--text-3) var(--line-progress, 0%),
-    var(--text-3) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-
-body.enable-sweep .lyric-line.editing .line-original,
-body.enable-sweep .lyric-line.editing .lyric-subline {
-  background: none;
-  -webkit-text-fill-color: currentColor;
-  color: var(--text);
-}
-
-.lyric-line.editing {
-  background: var(--surface-hover);
-  opacity: 1;
-  transform: none;
-}
-
-.lyric-line.editing .line-original {
-  outline: 1px solid var(--accent-glow);
-  outline-offset: 5px;
-  border-radius: 3px;
-  cursor: text;
-}
-
-.lyrics-static .lyric-line {
-  opacity: 0.9;
-  transform: none;
-  cursor: default;
-  content-visibility: auto;
-}
-
-.lyrics-static .lyric-line:hover {
-  background: transparent;
-}
-
-/* View modes */

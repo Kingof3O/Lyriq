@@ -2,6 +2,8 @@
    Fullscreen
    -------------------------------------------------------------------------- */
 
+body.mode-fullscreen .stage-meta,
+body.mode-fullscreen .stage-actions,
 body.mode-fullscreen .topbar,
 body.mode-fullscreen .player-dock {
   transition: opacity 0.24s ease, transform 0.24s ease;

@@ -1,5 +1,5 @@
 /* --------------------------------------------------------------------------
-   Player dock
+   Player dock - Canonical Lyriq Floating Dock (720x64, 22px offset)
    -------------------------------------------------------------------------- */
 
 .player-dock {
@@ -15,6 +15,42 @@
   border-top: 1px solid var(--border);
 }
 
+body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .player-dock {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 44px));
+  height: 64px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
+  background: rgba(15, 15, 20, 0.94);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(20px);
+  display: grid;
+  grid-template-columns: 170px 1fr 170px;
+  align-items: center;
+}
+
+body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .dock-main {
+  display: contents;
+}
+
+body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .dock-progress {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 0;
+  height: 2px;
+  padding: 0;
+  background: #2A2A31;
+}
+
+body:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .lyrics-scroll {
+  padding-bottom: 110px;
+}
+
 .dock-progress {
   display: flex;
   align-items: center;
@@ -23,41 +59,28 @@
 }
 
 .time-stamp {
-  width: 33px;
-  flex: 0 0 33px;
-  color: var(--text-3);
-  font-size: 9.5px;
-  font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-.time-stamp:last-child {
-  text-align: right;
+  font-size: 11px;
+  color: #777783;
 }
 
 .scrub-track {
   position: relative;
   flex: 1 1 auto;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--surface-active);
+  height: 2px;
+  border-radius: 2px;
+  background: transparent;
   cursor: pointer;
   touch-action: none;
-  transition: height 0.15s ease;
 }
 
 .scrub-track::before {
   content: '';
   position: absolute;
-  top: -6px;
+  top: -8px;
   right: 0;
-  bottom: -6px;
+  bottom: -8px;
   left: 0;
-}
-
-.scrub-track:hover,
-.scrub-track:focus-visible {
-  height: 6px;
 }
 
 .scrub-fill {
@@ -65,7 +88,7 @@
   inset: 0 auto 0 0;
   width: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--brand), var(--live-accent));
+  background: linear-gradient(90deg, var(--brand), var(--live));
   transition: width 0.1s linear;
 }
 
@@ -85,24 +108,15 @@
 }
 
 .scrub-track:hover .scrub-handle,
-.scrub-track:active .scrub-handle,
-.scrub-track:focus-visible .scrub-handle {
+.scrub-track:active .scrub-handle {
   opacity: 1;
-}
-
-.dock-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  min-height: 0;
 }
 
 .dock-left,
 .dock-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -113,7 +127,8 @@
 .dock-controls {
   display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
+  gap: 18px;
 }
 
 .playing-indicator {
@@ -136,42 +151,45 @@ body.is-playing .playing-indicator span:nth-child(3) { animation: bars 1.2s 0.24
 .dock-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 22px;
-  max-width: 118px;
-  padding: 0 7px;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: transparent;
-  color: var(--text-3);
-  font-size: 8.5px;
-  font-weight: 750;
-  letter-spacing: 0.03em;
+  background: #0F0F13;
+  color: #B4B4BF;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .dock-chip:hover {
-  color: var(--text-2);
-  background: var(--surface-hover);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: #14141A;
 }
 
 .dock-offset {
-  color: var(--accent-text);
+  color: var(--brand-soft);
   font-variant-numeric: tabular-nums;
 }
 
 .view-chip {
-  color: var(--accent-text);
-  border-color: var(--accent-glow);
-  background: var(--accent-soft);
+  color: var(--brand-soft);
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.08);
 }
 
 .transport {
-  width: 26px;
-  height: 26px;
-  color: var(--text-2);
+  width: 30px;
+  height: 30px;
+  color: #AAAAAA;
+  display: grid;
+  place-items: center;
+}
+
+.transport:hover {
+  color: #FFFFFF;
 }
 
 .play-btn {
@@ -184,7 +202,7 @@ body.is-playing .playing-indicator span:nth-child(3) { animation: bars 1.2s 0.24
   border: 1px solid #393944;
   border-radius: 50%;
   background: #17171C;
-  color: var(--text);
+  color: #FFFFFF;
   transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.18s var(--ease);
 }
 
@@ -198,25 +216,4 @@ body.is-playing .playing-indicator span:nth-child(3) { animation: bars 1.2s 0.24
 .play-btn .icon {
   width: 16px;
   height: 16px;
-}
-
-@media (min-width: 680px) and (min-height: 480px) {
-  body.mode-window:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .player-dock {
-    position: absolute;
-    left: 50%;
-    bottom: 22px;
-    transform: translateX(-50%);
-    width: min(720px, calc(100vw - 44px));
-    height: 64px;
-    padding: 6px 18px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
-    background: rgba(15, 15, 20, 0.94);
-    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(20px);
-  }
-
-  body.mode-window:not(.mode-mini):not(.mode-square):not(.mode-fullscreen) .lyrics-scroll {
-    padding-bottom: 110px;
-  }
 }

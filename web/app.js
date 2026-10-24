@@ -822,10 +822,19 @@
         activeEl.classList.add('active');
         setupActiveSublines(activeEl, index);
         if (allowScroll !== false && Date.now() > AppState.userScrollUntil && !AppState.isMini) {
-          activeEl.scrollIntoView({
-            behavior: prefersReducedMotion() || AppState.lowPower ? 'auto' : 'smooth',
-            block: 'center'
-          });
+          if (previous < 0) {
+            var cRect = el.lyricsViewport.getBoundingClientRect();
+            var lRect = activeEl.getBoundingClientRect();
+            var offset = lRect.top - cRect.top + el.lyricsViewport.scrollTop;
+            el.lyricsViewport.style.scrollBehavior = 'auto';
+            el.lyricsViewport.scrollTop = Math.max(0, offset - (cRect.height * 0.45));
+            el.lyricsViewport.style.scrollBehavior = '';
+          } else {
+            activeEl.scrollIntoView({
+              behavior: prefersReducedMotion() || AppState.lowPower ? 'auto' : 'smooth',
+              block: 'center'
+            });
+          }
         }
         updateSweep(index, currentPositionSeconds() + AppState.offset);
       }
@@ -3648,6 +3657,8 @@
       }
       AppState.isSquare = true;
       el.body.classList.add('mode-square');
+      if (el.squareHeader) el.squareHeader.hidden = false;
+      if (el.squareFooter) el.squareFooter.hidden = false;
       refreshSquare();
       if (opts.backend !== false) callApi('toggle_square_mode', true);
       if (opts.persist !== false) persistSettings({ view_mode: 'square' });
@@ -3655,6 +3666,8 @@
     } else {
       AppState.isSquare = false;
       el.body.classList.remove('mode-square');
+      if (el.squareHeader) el.squareHeader.hidden = true;
+      if (el.squareFooter) el.squareFooter.hidden = true;
       if (opts.backend !== false) callApi('toggle_square_mode', false);
       if (opts.persist !== false) persistSettings({ view_mode: 'card' });
       if (opts.announce) showToast('Full window', { icon: 'expand' });

@@ -10,7 +10,11 @@
 body.mode-square .topbar,
 body.mode-square .player-dock,
 body.mode-square .fullscreen-stage,
-body.mode-square .mini-bar {
+body.mode-square .mini-bar,
+body.mode-square .stage-meta,
+body.mode-square .stage-actions,
+body.mode-square .corner-note,
+body.mode-square .scrollrail {
   display: none !important;
 }
 

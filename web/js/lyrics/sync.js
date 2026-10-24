@@ -67,10 +67,19 @@
         activeEl.classList.add('active');
         setupActiveSublines(activeEl, index);
         if (allowScroll !== false && Date.now() > AppState.userScrollUntil && !AppState.isMini) {
-          activeEl.scrollIntoView({
-            behavior: prefersReducedMotion() || AppState.lowPower ? 'auto' : 'smooth',
-            block: 'center'
-          });
+          if (previous < 0) {
+            var cRect = el.lyricsViewport.getBoundingClientRect();
+            var lRect = activeEl.getBoundingClientRect();
+            var offset = lRect.top - cRect.top + el.lyricsViewport.scrollTop;
+            el.lyricsViewport.style.scrollBehavior = 'auto';
+            el.lyricsViewport.scrollTop = Math.max(0, offset - (cRect.height * 0.45));
+            el.lyricsViewport.style.scrollBehavior = '';
+          } else {
+            activeEl.scrollIntoView({
+              behavior: prefersReducedMotion() || AppState.lowPower ? 'auto' : 'smooth',
+              block: 'center'
+            });
+          }
         }
         updateSweep(index, currentPositionSeconds() + AppState.offset);
       }

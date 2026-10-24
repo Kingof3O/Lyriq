@@ -1,5 +1,5 @@
 /* --------------------------------------------------------------------------
-   Top bar
+   Top bar - Canonical Lyriq Window Chrome (Lyriq_UIUX_Kit)
    -------------------------------------------------------------------------- */
 
 .topbar {
@@ -7,18 +7,17 @@
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: 10px;
   height: var(--topbar-h);
   flex: 0 0 var(--topbar-h);
-  padding: 6px 10px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  padding: 0 22px;
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 10px;
   flex: 0 0 auto;
 }
 
@@ -26,29 +25,26 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  color: var(--accent-text);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-glow);
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
 }
 
 .brand-mark .icon {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
 }
 
 .brand-logo-img {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 
 .brand-mark.large {
-  width: 44px;
-  height: 44px;
-  border-radius: 13px;
+  width: 36px;
+  height: 36px;
 }
 
 .brand-mark.large .icon {
@@ -62,9 +58,17 @@
 }
 
 .brand-name {
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.brand-sub {
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  margin-left: 4px;
 }
 
 .live-bars {
@@ -98,23 +102,28 @@ body.is-playing .live-bars span:nth-child(3) { animation: bars 1.3s 0.3s ease-in
 }
 
 .now-playing {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  gap: 9px;
-  flex: 1 1 auto;
+  gap: 10px;
+  max-width: 520px;
   min-width: 0;
 }
 
 .np-art-wrap,
 .mini-art-wrap {
   position: relative;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(145deg, #29467A, #5C3C6F 48%, #B27B5A);
+  border: none;
 }
 
 .np-art,
@@ -147,7 +156,7 @@ body.is-playing .live-bars span:nth-child(3) { animation: bars 1.3s 0.3s ease-in
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
 }
 
 .np-title-line {
@@ -159,17 +168,18 @@ body.is-playing .live-bars span:nth-child(3) { animation: bars 1.3s 0.3s ease-in
 
 .track-title {
   font-size: 13px;
-  font-weight: 750;
-  letter-spacing: -0.005em;
+  font-weight: 620;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text);
 }
 
 .track-sub {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
   font-size: 11px;
   color: var(--text-2);
@@ -185,27 +195,10 @@ body.is-playing .live-bars span:nth-child(3) { animation: bars 1.3s 0.3s ease-in
   text-overflow: ellipsis;
 }
 
-.brand-sub {
-  color: var(--text-3);
-  font-size: 11px;
-  font-weight: 500;
-  margin-left: 2px;
-}
-
-@media (min-width: 680px) {
-  .now-playing {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    max-width: 480px;
-  }
-}
-
 .stage-meta {
   position: absolute;
   left: 28px;
-  top: calc(var(--topbar-h) + 16px);
+  top: 92px;
   z-index: 25;
   display: flex;
   gap: 8px;
@@ -215,11 +208,39 @@ body.is-playing .live-bars span:nth-child(3) { animation: bars 1.3s 0.3s ease-in
 .stage-actions {
   position: absolute;
   right: 26px;
-  top: calc(var(--topbar-h) + 16px);
+  top: 92px;
   z-index: 25;
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+.stage-meta .tag {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #B4B4BF;
+  letter-spacing: 0.02em;
+}
+
+.stage-actions .icon-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: #AAAAAA;
+  background: transparent;
+}
+
+.stage-actions .icon-btn:hover {
+  border-color: var(--border);
+  background: #121218;
+  color: #FFFFFF;
 }
 
 .tag {
