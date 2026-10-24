@@ -20,6 +20,9 @@ DEFAULT_WIDTH = 480
 DEFAULT_HEIGHT = 720
 MIN_WIDTH = 360
 MIN_HEIGHT = 85
+DEFAULT_MINI_WIDTH = 560
+MIN_MINI_WIDTH = 420
+MAX_MINI_WIDTH = 1400
 
 # Keys this module (and main.py) is allowed to write.  Everything else belongs
 # to the frontend and must not be copied back from a stale snapshot.
@@ -29,6 +32,7 @@ OWNED_SETTING_KEYS = frozenset(
         "window_y",
         "window_width",
         "window_height",
+        "mini_width",
         "always_on_top",
         "close_to_tray",
         "view_mode",
@@ -61,6 +65,14 @@ def clamp_size(width, height):
     if height <= 0:
         height = DEFAULT_HEIGHT
     return max(MIN_WIDTH, width), max(MIN_HEIGHT, height)
+
+
+def clamp_mini_width(width):
+    """Return a usable mini window width (between 420px and 1400px)."""
+    w = _as_int(width, DEFAULT_MINI_WIDTH)
+    if w is None or w <= 0:
+        w = DEFAULT_MINI_WIDTH
+    return max(MIN_MINI_WIDTH, min(MAX_MINI_WIDTH, w))
 
 
 def _virtual_screen():
@@ -161,6 +173,7 @@ def load_window_settings(settings):
         "y": y,
         "width": width,
         "height": height,
+        "mini_width": clamp_mini_width(settings.get("mini_width", DEFAULT_MINI_WIDTH)),
         "always_on_top": bool(settings.get("always_on_top", False)),
         "close_to_tray": bool(settings.get("close_to_tray", True)),
         "view_mode": settings.get("view_mode", "card"),
@@ -182,6 +195,9 @@ def persist_settings(changes):
     try:
         cache = get_cache()
         current = cache.get_settings()
+
+        if "mini_width" in allowed:
+            allowed["mini_width"] = clamp_mini_width(allowed["mini_width"])
 
         if "window_width" in allowed or "window_height" in allowed:
             width, height = clamp_size(

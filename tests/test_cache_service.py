@@ -9,6 +9,7 @@ from unittest import mock
 import app_paths
 import cache_service
 from cache_service import CacheService
+import window_state
 
 
 class CacheServiceTestCase(unittest.TestCase):
@@ -70,6 +71,19 @@ class CacheServiceTestCase(unittest.TestCase):
                 "INSERT INTO settings (key, value) VALUES ('legacy', 'not-json')"
             )
         self.assertEqual(self.cache.get_setting("legacy"), "not-json")
+
+    def test_mini_width_clamping_and_persistence(self):
+        self.assertEqual(window_state.clamp_mini_width(None), 560)
+        self.assertEqual(window_state.clamp_mini_width(200), 420)
+        self.assertEqual(window_state.clamp_mini_width(2000), 1400)
+        self.assertEqual(window_state.clamp_mini_width("760"), 760)
+
+        settings = window_state.load_window_settings({"mini_width": 800})
+        self.assertEqual(settings["mini_width"], 800)
+
+        with mock.patch("window_state.get_cache", return_value=self.cache):
+            self.assertTrue(window_state.persist_settings({"mini_width": 900}))
+            self.assertEqual(self.cache.get_setting("mini_width"), 900)
 
     def test_offset_normalization_and_round_trip(self):
         self.assertEqual(

@@ -91,19 +91,37 @@ class HotkeyThread(threading.Thread):
 
 
 user32 = ctypes.windll.user32
+
+# Defensive patch for pywebview winforms BrowserForm.move:
+# Pywebview's winforms implementation passes None for cx and cy in SetWindowPos,
+# which fails on Python 3.12 64-bit if user32.SetWindowPos.argtypes enforces c_int.
+# We patch it safely here so window dragging and positioning never throw ctypes ArgumentError.
 try:
-    user32.SetWindowPos.argtypes = [
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.c_uint
-    ]
-    user32.SetWindowPos.restype = ctypes.c_int
-except Exception:
-    pass
+    import webview.platforms.winforms as _winforms_platform
+    def _patched_browserform_move(self, x, y):
+        SWP_NOSIZE = 0x0001
+        SWP_NOZORDER = 0x0004
+        SWP_SHOWWINDOW = 0x0040
+        scale = getattr(self, "_scale", 1)
+        if scale != 1:
+            x_phys = int(x * scale)
+            y_phys = int(y * scale)
+        else:
+            x_phys = int(x)
+            y_phys = int(y)
+        ctypes.windll.user32.SetWindowPos(
+            self.Handle.ToInt32(),
+            0,
+            x_phys,
+            y_phys,
+            0,
+            0,
+            SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW,
+        )
+    _winforms_platform.BrowserView.BrowserForm.move = _patched_browserform_move
+except Exception as _patch_exc:
+    logger.debug("Could not patch BrowserForm.move: %s", _patch_exc)
+
 
 class AppAPI:
     def __init__(self, app):
@@ -115,14 +133,14 @@ class AppAPI:
         try:
             hwnd = self._app.get_hwnd()
             if hwnd:
-                HWND_TOPMOST = ctypes.c_void_p(-1)
-                HWND_NOTOPMOST = ctypes.c_void_p(-2)
+                HWND_TOPMOST = -1
+                HWND_NOTOPMOST = -2
                 SWP_NOMOVE = 0x0002
                 SWP_NOSIZE = 0x0001
                 SWP_NOACTIVATE = 0x0010
                 h_after = HWND_TOPMOST if is_pinned else HWND_NOTOPMOST
                 user32.SetWindowPos(
-                    ctypes.c_void_p(hwnd),
+                    int(hwnd),
                     h_after,
                     0, 0, 0, 0,
                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE
@@ -137,11 +155,13 @@ class AppAPI:
         self._app.set_mini_mode(bool(is_mini))
 
     def toggle_mini_expand(self, is_expanded):
-        if self._app.window:
-            if is_expanded:
-                self._app.window.resize(MINI_WIDTH, 270)
-            else:
-                self._app.window.resize(MINI_WIDTH, MINI_HEIGHT)
+        self._app.set_mini_expand(bool(is_expanded))
+
+    def set_mini_width(self, width):
+        return self._app.set_mini_width(width)
+
+    def get_mini_width(self):
+        return self._app._mini_width
 
     def set_close_to_tray(self, enabled):
         """Enables or disables hiding the window instead of closing it."""
@@ -535,6 +555,8 @@ class SpotifyLyricsApp:
         self._geometry_timer = None
         self._geometry_lock = threading.Lock()
         self._ignore_geometry_until = 0.0
+        self._mini_width = window_state.DEFAULT_MINI_WIDTH
+        self._mini_expanded = False
         self._is_mini = False
         self._is_fullscreen = False
         self._pending_mini = False
@@ -620,6 +642,7 @@ class SpotifyLyricsApp:
             logger.warning("Could not load persisted window settings: %s", exc)
         geometry = window_state.load_window_settings(settings)
         self.close_to_tray = geometry["close_to_tray"]
+        self._mini_width = geometry.get("mini_width", window_state.DEFAULT_MINI_WIDTH)
         self._normal_geometry = {
             "x": geometry["x"],
             "y": geometry["y"],
@@ -751,7 +774,8 @@ class SpotifyLyricsApp:
         try:
             if self._pending_mini and self._is_mini and self.window:
                 self._pending_mini = False
-                self.window.resize(MINI_WIDTH, MINI_HEIGHT)
+                curr_h = 270 if self._mini_expanded else MINI_HEIGHT
+                self.window.resize(self._mini_width, curr_h)
             if self._pending_fullscreen and self._is_fullscreen and self.window:
                 self._pending_fullscreen = False
                 self.window.toggle_fullscreen()
@@ -911,7 +935,8 @@ class SpotifyLyricsApp:
         if enabled:
             if self.window and self._window_is_shown():
                 try:
-                    self.window.resize(MINI_WIDTH, MINI_HEIGHT)
+                    curr_h = 270 if self._mini_expanded else MINI_HEIGHT
+                    self.window.resize(self._mini_width, curr_h)
                 except Exception as exc:
                     logger.warning("Could not resize into mini mode: %s", exc)
             else:
@@ -933,6 +958,27 @@ class SpotifyLyricsApp:
         self._persist_owned(
             {"view_mode": "mini" if enabled else "card"}
         )
+
+    def set_mini_expand(self, is_expanded):
+        self._mini_expanded = bool(is_expanded)
+        if self.window and self._is_mini and self._window_is_shown():
+            try:
+                curr_h = 270 if is_expanded else MINI_HEIGHT
+                self.window.resize(self._mini_width, curr_h)
+            except Exception as exc:
+                logger.warning("Could not toggle mini expand: %s", exc)
+
+    def set_mini_width(self, width):
+        clamped = window_state.clamp_mini_width(width)
+        self._mini_width = clamped
+        if self.window and self._is_mini and self._window_is_shown():
+            try:
+                curr_h = 270 if self._mini_expanded else MINI_HEIGHT
+                self.window.resize(clamped, curr_h)
+            except Exception as exc:
+                logger.warning("Could not resize mini window width: %s", exc)
+        self._persist_owned({"mini_width": clamped})
+        return clamped
 
     def set_fullscreen_mode(self, enabled):
         enabled = bool(enabled)

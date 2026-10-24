@@ -119,6 +119,8 @@ class SmokeRequestHandler(http.server.SimpleHTTPRequestHandler):
                   toggle_fullscreen: function() {{ return Promise.resolve(true); }},
                   toggle_mini_mode: function() {{ return Promise.resolve(true); }},
                   toggle_mini_expand: function() {{ return Promise.resolve(true); }},
+                  set_mini_width: function(w) {{ return Promise.resolve(w); }},
+                  get_mini_width: function() {{ return Promise.resolve(560); }},
                   toggle_ghost_mode: function() {{ return Promise.resolve(true); }},
                   toggle_discord_rpc: function() {{ return Promise.resolve(true); }},
                   seek: function() {{ return Promise.resolve(true); }},

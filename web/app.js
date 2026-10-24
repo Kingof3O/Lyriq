@@ -174,6 +174,8 @@
     btnOffsetChip: $('btnOffsetChip'),
     // Mini
     miniBar: $('miniBar'),
+    miniResizeLeft: $('miniResizeLeft'),
+    miniResizeRight: $('miniResizeRight'),
     miniArtWrap: $('miniArtWrap'),
     miniArtwork: $('miniArtwork'),
     miniDisc: $('miniDisc'),
@@ -1069,30 +1071,43 @@
 
   function setMiniFromLine(line) {
     if (!line) {
-      el.miniOriginal.textContent = AppState.lyrics.length ? 'Instrumental' : (AppState.hasTrack ? 'Loading lyrics…' : 'Connecting…');
+      var fallback = AppState.lyrics.length ? 'Instrumental' : (AppState.hasTrack ? 'Loading lyrics…' : 'Connecting…');
+      el.miniOriginal.textContent = fallback;
+      el.miniOriginal.title = fallback;
       el.miniRomaji.textContent = '';
+      el.miniRomaji.title = '';
       el.miniTranslation.textContent = '';
+      el.miniTranslation.title = '';
       el.miniBar.setAttribute('aria-label', 'Mini player');
       return;
     }
     if (AppState.lyricViewMode === 'trans-only') {
       var text = (line.translation && line.translation.trim()) || line.original || '—';
       el.miniOriginal.textContent = text;
+      el.miniOriginal.title = text;
       el.miniRomaji.textContent = '';
+      el.miniRomaji.title = '';
       el.miniTranslation.textContent = '';
+      el.miniTranslation.title = '';
       el.miniBar.setAttribute('aria-label', text);
       return;
     }
     if (AppState.lyricViewMode === 'orig-only') {
       el.miniOriginal.textContent = line.original || '—';
+      el.miniOriginal.title = line.original || '';
       el.miniRomaji.textContent = line.romaji || '';
+      el.miniRomaji.title = line.romaji || '';
       el.miniTranslation.textContent = '';
+      el.miniTranslation.title = '';
       el.miniBar.setAttribute('aria-label', line.original || '');
       return;
     }
     el.miniOriginal.textContent = line.original || '—';
+    el.miniOriginal.title = line.original || '';
     el.miniRomaji.textContent = line.romaji || '';
+    el.miniRomaji.title = line.romaji || '';
     el.miniTranslation.textContent = line.translation || '';
+    el.miniTranslation.title = line.translation || '';
     el.miniBar.setAttribute('aria-label', (line.original || '') + ' — ' + (line.translation || ''));
   }
 
@@ -2280,6 +2295,7 @@
       { title: 'Song history', sub: 'Preview songs you played', icon: 'history', run: openHistory },
       { title: 'Vocabulary notebook', sub: 'Saved words and definitions', icon: 'book', run: function () { openVocab(''); } },
       { title: 'Toggle mini mode', sub: 'Ctrl+Shift+M', icon: 'pip', run: function () { setMiniMode(!AppState.isMini); } },
+      { title: 'Mini mode: Cycle width', sub: '560px → 760px → 960px', icon: 'pip', run: function () { cycleMiniWidth(); } },
       { title: 'Toggle fullscreen', sub: 'F11', icon: 'expand', run: function () { setFullscreen(!AppState.isFullscreen); } },
       { title: 'Toggle always on top', sub: AppState.pinned ? 'On' : 'Off', icon: 'pin', run: function () { setPinned(!AppState.pinned); } },
       { title: 'Toggle ghost mode', sub: AppState.ghost ? 'On' : 'Off', icon: 'eye-off', run: function () { setGhostMode(!AppState.ghost); } },
@@ -2970,6 +2986,91 @@
     if (opts.backend !== false) callApi('toggle_mini_expand', next);
   }
 
+  function cycleMiniWidth() {
+    var current = window.innerWidth;
+    var presets = [560, 760, 960];
+    var next = presets[0];
+    for (var i = 0; i < presets.length; i++) {
+      if (current < presets[i] - 30) {
+        next = presets[i];
+        break;
+      }
+    }
+    callApi('set_mini_width', next).then(function () {
+      showToast('Mini width: ' + next + 'px', { icon: 'pip' });
+    });
+  }
+
+  function initMiniResize() {
+    var left = el.miniResizeLeft;
+    var right = el.miniResizeRight;
+    if (!left || !right) return;
+
+    var isResizing = false;
+    var startX = 0;
+    var startWidth = 560;
+    var currentHandle = null;
+    var rafId = null;
+    var pendingWidth = 560;
+
+    function onMouseDown(e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      isResizing = true;
+      currentHandle = this;
+      startX = e.screenX;
+      startWidth = window.innerWidth;
+      pendingWidth = startWidth;
+      currentHandle.classList.add('is-resizing');
+      el.body.classList.add('resizing-mini');
+      window.addEventListener('mousemove', onMouseMove, { passive: true });
+      window.addEventListener('mouseup', onMouseUp);
+    }
+
+    function onMouseMove(e) {
+      if (!isResizing) return;
+      var dx = e.screenX - startX;
+      var targetWidth = currentHandle === right
+        ? startWidth + dx
+        : startWidth - dx;
+      targetWidth = Math.max(420, Math.min(1400, Math.round(targetWidth)));
+      if (targetWidth === pendingWidth) return;
+      pendingWidth = targetWidth;
+      if (!rafId) {
+        rafId = requestAnimationFrame(function () {
+          rafId = null;
+          callApi('set_mini_width', pendingWidth);
+        });
+      }
+    }
+
+    function onMouseUp(e) {
+      if (!isResizing) return;
+      isResizing = false;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      if (currentHandle) currentHandle.classList.remove('is-resizing');
+      el.body.classList.remove('resizing-mini');
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      callApi('set_mini_width', pendingWidth);
+    }
+
+    function onDoubleClick(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      cycleMiniWidth();
+    }
+
+    right.addEventListener('mousedown', onMouseDown);
+    left.addEventListener('mousedown', onMouseDown);
+    right.addEventListener('dblclick', onDoubleClick);
+    left.addEventListener('dblclick', onDoubleClick);
+  }
+
   function setFullscreen(fullscreen, options) {
     var opts = options || {};
     var next = Boolean(fullscreen);
@@ -3609,6 +3710,8 @@
       if (!el.dictCard.hidden) el.dictCard.hidden = true;
       closeLineContext();
     });
+
+    initMiniResize();
   }
 
   function handleWheelVolume(event) {
