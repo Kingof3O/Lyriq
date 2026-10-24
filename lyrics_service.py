@@ -137,13 +137,30 @@ class LyricsService:
                 self._save_result(artist, title, selected, aborted)
                 return selected
 
+        # Local .lrc always takes precedence over cached network lyrics.
+        if provider is None or provider == "local":
+            try:
+                local_candidates = lyrics_providers.LocalLrcProvider().search(query, limit=1)
+                if local_candidates and float(local_candidates[0].get("score") or 0) >= 80.0:
+                    fetched_local = lyrics_providers.LocalLrcProvider().fetch(local_candidates[0], query)
+                    if fetched_local and fetched_local.get("lines"):
+                        result = self._format_provider_result(fetched_local, artist, title)
+                        if result:
+                            self._save_result(artist, title, result, aborted)
+                            return result
+            except Exception as exc:
+                logger.debug("Local LRC check error: %s", exc)
+
         cached = self.cache.get_lyrics(artist, title)
         if aborted():
             return None
         if isinstance(cached, dict):
-            normalized = self._normalize_cached(cached)
-            if normalized.get("lines"):
-                return normalized
+            if provider is None or cached.get("provider") == provider:
+                # If cached was local but local file is now removed, let the search continue
+                if cached.get("provider") != "local" or (provider == "local"):
+                    normalized = self._normalize_cached(cached)
+                    if normalized.get("lines"):
+                        return normalized
 
         provider_filter = [provider] if provider else None
         attempts = 0

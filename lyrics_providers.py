@@ -180,17 +180,22 @@ def _safe_float(value, default: float = 0.0) -> float:
 
 
 def _title_points(query_title, candidate_title) -> float:
+    exact_query = _key(query_title)
+    exact_candidate = _key(candidate_title)
+    if exact_query and exact_candidate and exact_query == exact_candidate:
+        return 60.0
+
     query_key = _loose_key(query_title)
     candidate_key = _loose_key(candidate_title)
     if not query_key or not candidate_key:
         return 0.0
     if query_key == candidate_key:
-        return 60.0
+        return 52.0
 
     query_base = _base_title_key(query_title)
     candidate_base = _base_title_key(candidate_title)
     if query_base and query_base == candidate_base:
-        return 52.0
+        return 48.0
 
     if query_base and candidate_base and (
         query_base in candidate_base or candidate_base in query_base
@@ -582,11 +587,12 @@ def _local_title_matches(query_title, candidate_title) -> bool:
         return True
     if _base_title_key(query_title) == _base_title_key(candidate_title):
         return True
-    if query_key in candidate_key or candidate_key in query_key:
-        ratio = min(len(query_key), len(candidate_key)) / max(
-            len(query_key), len(candidate_key)
-        )
-        if ratio >= 0.5:
+    query_tokens = [w for w in query_key.split() if w]
+    candidate_tokens = [w for w in candidate_key.split() if w]
+    if query_tokens and candidate_tokens:
+        overlap = set(query_tokens) & set(candidate_tokens)
+        token_ratio = len(overlap) / max(len(query_tokens), len(candidate_tokens))
+        if token_ratio >= 0.75:
             return True
     return difflib.SequenceMatcher(None, query_key, candidate_key).ratio() >= 0.88
 
@@ -598,11 +604,13 @@ def _local_artist_matches(query_artist, candidate_artist) -> bool:
         return True
     if query_key == candidate_key:
         return True
-    if query_key in candidate_key or candidate_key in query_key:
-        ratio = min(len(query_key), len(candidate_key)) / max(
-            len(query_key), len(candidate_key)
-        )
-        return ratio >= 0.6
+    query_tokens = [w for w in query_key.split() if w]
+    candidate_tokens = [w for w in candidate_key.split() if w]
+    if query_tokens and candidate_tokens:
+        overlap = set(query_tokens) & set(candidate_tokens)
+        token_ratio = len(overlap) / max(len(query_tokens), len(candidate_tokens))
+        if token_ratio >= 0.75:
+            return True
     return difflib.SequenceMatcher(None, query_key, candidate_key).ratio() >= 0.9
 
 
@@ -625,11 +633,12 @@ class LocalLrcProvider:
                 prepared.get("artist"), candidate.get("artist")
             ):
                 continue
-            candidate["score"] = 100.0
-            results.append(candidate)
-            if len(results) >= max(1, int(limit)):
-                break
-        return results
+            candidate["score"] = score_candidate(prepared, candidate)
+            if candidate["score"] > 0:
+                results.append(candidate)
+
+        results.sort(key=_rank_key)
+        return results[:max(1, int(limit))]
 
     def fetch(self, candidate: dict, query: dict | None = None) -> dict | None:
         raw_path = candidate.get("path") or candidate.get("id")

@@ -323,6 +323,66 @@ class LocalLrcTestCase(unittest.TestCase):
             ["Two"],
         )
 
+    def test_local_lrc_beats_cached_network_lyrics(self):
+        cache = CacheService(Path(self._tmp.name) / "test.db")
+        self.addCleanup(cache.close)
+        service = LyricsService(cache=cache)
+
+        cache.save_lyrics(
+            "The Artist",
+            "The Song",
+            {
+                "provider": "lrclib",
+                "id": "lrclib:old",
+                "title": "The Song",
+                "artist": "The Artist",
+                "is_synced": True,
+                "lines": [{"time": 1.0, "text": "Old Network Cached"}],
+            },
+        )
+        save_result = save_local_lrc(
+            "The Artist",
+            "The Song",
+            [{"time": 1.0, "text": "New Local File"}],
+        )
+        self.assertTrue(save_result["ok"])
+
+        result = service.fetch_lyrics("The Artist", "The Song", 200)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["provider"], "local")
+        self.assertEqual(result["lines"][0]["text"], "New Local File")
+
+    def test_exact_local_lrc_beats_fuzzy_local_lrc(self):
+        cache = CacheService(Path(self._tmp.name) / "test.db")
+        self.addCleanup(cache.close)
+        service = LyricsService(cache=cache)
+
+        res1 = save_local_lrc(
+            "The Artist",
+            "The Song (Live)",
+            [{"time": 1.0, "text": "Live Version"}],
+        )
+        res2 = save_local_lrc(
+            "The Artist",
+            "The Song",
+            [{"time": 1.0, "text": "Exact Version"}],
+        )
+        self.assertTrue(res1["ok"])
+        self.assertTrue(res2["ok"])
+
+        query = normalize_metadata("The Song", "The Artist")
+        query["duration"] = 200.0
+        candidates = LocalLrcProvider().search(query, limit=5)
+        self.assertGreaterEqual(len(candidates), 2)
+        # Exact title must be first and scored higher than the Live version
+        self.assertEqual(candidates[0]["title"], "The Song")
+        self.assertEqual(candidates[0]["score"], 100.0)
+        self.assertLess(candidates[1]["score"], 100.0)
+
+        result = service.fetch_lyrics("The Artist", "The Song", 200)
+        self.assertEqual(result["provider"], "local")
+        self.assertEqual(result["lines"][0]["text"], "Exact Version")
+
 
 class ProviderSearchTestCase(unittest.TestCase):
     def setUp(self):
